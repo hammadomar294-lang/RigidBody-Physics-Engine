@@ -7,6 +7,7 @@ Philosophy
 Rather than relying on existing engines, this project aims to gradually build the core systems from scratch while keeping the code modular and reusable. The engine is intended to serve both as a learning platform and as a foundation for future projects.
 
 Current Goals
+
 Learn practical vector mathematics
 
 Implement rigid body simulation
