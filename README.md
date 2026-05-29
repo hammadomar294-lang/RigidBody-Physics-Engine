@@ -8,11 +8,17 @@ Rather than relying on existing engines, this project aims to gradually build th
 
 Current Goals
 Learn practical vector mathematics
+
 Implement rigid body simulation
+
 Build collision detection and response systems
+
 Understand engine architecture and data flow
+
 Develop reusable systems that can support multiple projects
+
 Roadmap
+
 Phase 1 — Physics Simulation Engine (Current Phase)
 
 Build the core engine systems required to run physics experiments and simulations.
@@ -20,8 +26,11 @@ Build the core engine systems required to run physics experiments and simulation
 Target demonstrations:
 
 Projectile Motion
+
 Spring Motion
+
 Pendulum Simulation
+
 Gravity Experiments
 
 Phase 2 — Interactive Physics Sandbox
@@ -31,10 +40,15 @@ Expand the engine into an interactive simulation environment similar in spirit t
 Planned features:
 
 User interface system
+
 Object creation tools
+
 Runtime parameter editing
+
 Visualization tools
+
 Simulation controls
+
 Experiment presets
 
 Goal:
@@ -50,9 +64,13 @@ Goal:
 Create complete games powered entirely by the engine developed in previous phases.
 
 Technologies
+
 C++
-Raylib
+
+Raylib library
+
 Custom Mathematics Library
+
 Custom Physics Systems
 
 Project status: Phase 1 — In Progress
