@@ -15,6 +15,16 @@ Vec2 Vec2::operator-(const Vec2 &other) const
     return {X - other.X , Y - other.Y};
 }
 
+Vec2 Vec2::operator+=(const Vec2 &other) const
+{
+    return {X + other.X , Y + other.Y};
+}
+
+Vec2 Vec2::operator-=(const Vec2 &other) const
+{
+    return {X - other.X , Y - other.Y};
+}
+
 Vec2 Vec2::operator*(float scaler) const
 {
     return {X * scaler , Y * scaler};

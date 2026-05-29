@@ -4,6 +4,7 @@
 #include <numbers>
 #include <algorithm>
 #include <raylib.h>
+#include <vector>
 
 #include "../math/math.h"
 #include "../math/vector2.h"
@@ -35,8 +36,6 @@ class RigidBody
     float Radius;
     float Width;
     float Height;
-
-    
     
     ShapeType shapeType;
 
@@ -54,8 +53,8 @@ private:
     RigidBody(const Vec2 & position , float mass , float density , float restitution , float area ,
                               bool isStatic , ShapeType shapetype , Color randomColor , float radius =1, float width =1, float height =1);
     
-    Vec2 Vertices[];
-    Vec2 TransformVertices[];
+     vector<Vec2> Vertices;
+     vector<Vec2> TransformVertices;
 
 };
 
