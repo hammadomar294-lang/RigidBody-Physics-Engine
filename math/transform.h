@@ -5,20 +5,20 @@
 
 #include "vector2.h"
 
-class Transform
+class Transform2D
 {
 private:
-    const float PositionX;
-    const float PositionY;
-    const float Sin;
-    const float cos;
+    float PositionX;
+    float PositionY;
+    float Sin;
+    float Cos;
 
 public:
-    static Transform Zero;
-    Transform(Vec2 v , float angle);
-    Transform(float x , float y , float angle);
+    static Transform2D Zero;
+    Transform2D(Vec2 v , float angle);
+    Transform2D(float x , float y , float angle);
 
-    Vec2 TransformPoint(const Vec2 & original , Transform transform);
+    Vec2 transformPoint(const Vec2 & original);
 };
 
 

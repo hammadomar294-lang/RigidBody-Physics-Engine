@@ -63,6 +63,14 @@ void UpdateCamera(Camera2D& camera , vector<RigidBody> & bodysVector)
 
     for (int i = 0 ; i < bodysVector.size() - 1 ; i++)
     {
+        if (bodysVector[i].shapeType == ShapeType::Box)
+        {
+            bodysVector[i].RotateBy(world::pi * 0.5f * GetFrameTime());
+        }
+    }
+
+    for (int i = 0 ; i < bodysVector.size() - 1 ; i++)
+    {
         RigidBody & circleA = bodysVector[i];
         for (int j = i + 1 ; j < bodysVector.size() ; j++)
         {
@@ -137,7 +145,7 @@ vector<RigidBody> MakeBodies(int num)
 void DrawBodies(const vector<RigidBody>& Bodies)
 {
     
-    for(const RigidBody& body : Bodies)
+    for(RigidBody body : Bodies)
     {
         if(body.shapeType == ShapeType::Circle)
         {
@@ -150,13 +158,22 @@ void DrawBodies(const vector<RigidBody>& Bodies)
         }
         else if(body.shapeType == ShapeType::Box)
         {
-            DrawRectangle(
-                body.Position.X,
-                body.Position.Y,
-                body.Width,
-                body.Height,
-                body.BodyColor
-            );
+            
+            vector<Vec2> verts = body.GetTransformedVertices();
+
+            for(int i = 0; i < body.Triangles.size(); i += 3)
+            {
+                Vec2 p0 = verts[body.Triangles[i]];
+                Vec2 p1 = verts[body.Triangles[i + 1]];
+                Vec2 p2 = verts[body.Triangles[i + 2]];
+
+                DrawTriangle(
+                    {p0.X, p0.Y},
+                    {p1.X, p1.Y},
+                    {p2.X, p2.Y},
+                    body.BodyColor
+                );
+            }           
         }
     }
 }

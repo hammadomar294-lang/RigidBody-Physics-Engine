@@ -5,6 +5,12 @@ Vec2::Vec2(float x, float y)
     this->X = x;
     this->Y = y;
 }
+Vec2::Vec2()
+{
+    this->X = 0;
+    this->Y = 0;
+}
+
 Vec2 Vec2::operator+(const Vec2 &other) const
 {
     return {X + other.X , Y + other.Y};
