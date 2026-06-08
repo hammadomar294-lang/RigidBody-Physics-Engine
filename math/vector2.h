@@ -15,8 +15,8 @@ public:
 
     Vec2 operator+(const Vec2 & other) const;
     Vec2 operator-(const Vec2 & other) const;
-    Vec2 operator+=(const Vec2 & other) const;
-    Vec2 operator-=(const Vec2 & other) const;
+    Vec2& operator+=(const Vec2& other);
+    Vec2& operator-=(const Vec2& other);
     Vec2 operator*(float scaler) const;
     Vec2 operator/(float scaler) const;
 
@@ -27,7 +27,7 @@ public:
 
     Vec2 Normalize() const;
     
-
+    static const Vec2 Zero;
 
     
 };

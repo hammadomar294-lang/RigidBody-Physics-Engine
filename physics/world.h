@@ -15,6 +15,8 @@ public:
     static constexpr float MaxMass = 1000.0 * 10000.0f; 
 
     static constexpr float pi = 3.14159265359f;
+    static constexpr float gravity = 9.81f;
+    static constexpr float ground = 720.0f;
 };
 
 #endif

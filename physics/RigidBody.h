@@ -48,24 +48,24 @@ class RigidBody
 
     static RigidBody CreateBox(const Vec2 & position , float density , float restitution , bool isStatic , float width, float height);
 
-    vector<Vec2> GetTransformedVertices();
+    
 
     void MoveBy(Vec2 amount);
     void MoveTo(Vec2 position);
     void RotateBy(float amount);
 
-    // private constructor cus we dont want any one using it but use the function that creates shapes
     RigidBody(const Vec2 & position , float mass , float density , float restitution , float area ,
-                              bool isStatic , ShapeType shapetype , Color randomColor , float radius =1, float width =1, float height =1);
+                              bool isStatic , ShapeType shapetype , Color color , float radius =1, float width =1, float height =1);
     
-     vector<Vec2> Vertices;
-     vector<Vec2> TransformVertices;
-     vector<int> Triangles; // holds the indices which means this vertice is number 1 in Arrangement of the vertices
-                            // which mean starting from top left and moving clockwise
+    vector<Vec2> Vertices;
+    vector<Vec2> TransformedVertices;
+    vector<int> Triangles; // holds the indices which means this vertex is number 1 in Arrangement of the vertices
+                        // which mean starting from top left and moving clockwise
 
-     static vector<Vec2> MakeBoxVertices(float width , float height);
-     bool VerticesNeedsUpdate;
-     static vector<int> TriangulateBox();
+    static vector<Vec2> MakeBoxVertices(float width , float height);
+    vector<Vec2> GetTransformedVertices();
+    bool VerticesNeedsUpdate;
+    static vector<int> TriangulateBox();
 
 };
 

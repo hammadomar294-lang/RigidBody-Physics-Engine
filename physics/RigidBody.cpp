@@ -2,9 +2,9 @@
 
 
 RigidBody::RigidBody(const Vec2 & position , float mass , float density , float restitution , float area ,
-                              bool isStatic , ShapeType shapetype , Color randomColor  , float radius , float width , float height ) : Position(position) , LinearVelocity(0,0)
+                              bool isStatic , ShapeType shapetype , Color color  , float radius , float width , float height ) : Position(position) , LinearVelocity(0,0)
 {
-    
+    this->LinearVelocity = {0,0};
     this->Mass = mass;
     this->Density = density;
     this->Restitution = restitution;
@@ -16,10 +16,10 @@ RigidBody::RigidBody(const Vec2 & position , float mass , float density , float 
     this->Height = height;
 
     this->shapeType = shapetype;
-    this->BodyColor = randomColor;
+    this->BodyColor = color;
 
     this->Rotation = 0;
-    this->RotationVelocity = 0;
+    this->RotationVelocity = 0; 
     if(shapeType == ShapeType::Box)
     {
         this->Vertices = MakeBoxVertices(width , height);
@@ -59,14 +59,8 @@ vector<int> RigidBody::TriangulateBox() // we start from top left and clockwise
 
 RigidBody RigidBody::CreateCircle(const Vec2 & position , float density , float restitution , bool isStatic , float radius )
 {
-    Color randomColor =
-    {
-        (unsigned char)(rand() % 256),
-        (unsigned char)(rand() % 256),
-        (unsigned char)(rand() % 256),
-        255
-    };
-
+    Color color = GRAY;
+    
     density = clamp(density , world::MinDensity , world::MaxDensity);
     restitution = clamp(restitution , 0.0f , 1.0f);
 
@@ -75,18 +69,12 @@ RigidBody RigidBody::CreateCircle(const Vec2 & position , float density , float 
 
     float mass = area * density;
 
-    return RigidBody(position , mass , density , restitution , area , isStatic , ShapeType::Circle , randomColor ,radius , 0.0f , 0.0f);
+    return RigidBody(position , mass , density , restitution , area , isStatic , ShapeType::Circle , color ,radius , 0.0f , 0.0f);
 }
 
 RigidBody RigidBody::CreateBox(const Vec2 &position, float density, float restitution, bool isStatic ,float width, float height)
 {
-    Color randomColor =
-    {
-        (unsigned char)(rand() % 256),
-        (unsigned char)(rand() % 256),
-        (unsigned char)(rand() % 256),
-        255
-    };
+    Color color = GRAY;
 
     density = clamp(density , world::MinDensity , world::MaxDensity);
     restitution = clamp(restitution , 0.0f , 1.0f);
@@ -96,25 +84,27 @@ RigidBody RigidBody::CreateBox(const Vec2 &position, float density, float restit
 
     float mass = area * density;
 
-    return RigidBody(position , mass , density , restitution , area , isStatic , ShapeType::Box , randomColor ,0.0f ,width , height);
+    return RigidBody(position , mass , density , restitution , area , isStatic , ShapeType::Box , color ,0.0f ,width , height);
 }
 
 vector<Vec2> RigidBody::GetTransformedVertices()
 {
-    vector<Vec2> TransformedVertices(Vertices.size());
-
     if(VerticesNeedsUpdate)
     {
+        vector<Vec2> tempVertices(Vertices.size());
         Transform2D trans(Position,Rotation);
 
         for (int i = 0 ; i < Vertices.size() ; i++)
         {
             Vec2 original = Vertices[i];
-            TransformedVertices[i] = trans.transformPoint(original);
+            tempVertices[i] = trans.transformPoint(original);
         }
+        TransformedVertices = tempVertices;
     }
 
+    VerticesNeedsUpdate = false;
     return TransformedVertices;
+    
 }
 
 void RigidBody::MoveBy(Vec2 amount)

@@ -21,14 +21,18 @@ Vec2 Vec2::operator-(const Vec2 &other) const
     return {X - other.X , Y - other.Y};
 }
 
-Vec2 Vec2::operator+=(const Vec2 &other) const
+Vec2& Vec2::operator+=(const Vec2& other)
 {
-    return {X + other.X , Y + other.Y};
+    X += other.X;
+    Y += other.Y;
+    return *this;
 }
 
-Vec2 Vec2::operator-=(const Vec2 &other) const
+Vec2& Vec2::operator-=(const Vec2& other)
 {
-    return {X - other.X , Y - other.Y};
+    X -= other.X;
+    Y -= other.Y;
+    return *this;
 }
 
 Vec2 Vec2::operator*(float scaler) const
@@ -64,3 +68,5 @@ Vec2 Vec2::Normalize() const
 
     return {X/length , Y/length};
 }
+
+const Vec2 Vec2::Zero(0.0f,0.0f);

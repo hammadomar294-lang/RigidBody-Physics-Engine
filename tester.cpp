@@ -14,11 +14,143 @@ using namespace std;
 // CAMERA
 // --------------------------------------------------
 
-void UpdateCamera(Camera2D& camera , vector<RigidBody> & bodysVector)
+void RotateBodys(vector<RigidBody> & bodysVector , float angle)
+{
+    for (int i = 0 ; i < bodysVector.size() - 1 ; i++)
+    {
+        if (bodysVector[i].shapeType == ShapeType::Box)
+        {
+            bodysVector[i].RotateBy(angle);
+        }
+    }
+
+}
+
+void DetectCircleCollision(vector <RigidBody> & bodysVector)
+{
+    for(RigidBody& body : bodysVector)
+    {
+        if(body.shapeType == ShapeType::Circle)
+            body.BodyColor = GRAY;
+    }
+
+    for (int i = 0 ; i < bodysVector.size() - 1 ; i++)
+    {
+        if (bodysVector[i].shapeType != ShapeType::Circle)
+            continue;
+        
+        RigidBody & circleA = bodysVector[i];
+        for (int j = i + 1 ; j < bodysVector.size() ; j++)
+        {
+            if(bodysVector[j].shapeType != ShapeType::Circle)
+                continue;
+
+            RigidBody & circleB = bodysVector[j];
+            Collision::CircleCollisionResult result = Collision::IsIntersectCircle(circleA.Position , circleA.Radius , circleB.Position , circleB.Radius);
+            if (result.IsIntersect)
+            {
+                circleA.MoveBy( result.NormalCollisionDirection * (result.Depth * 0.5f));
+                circleB.MoveBy( result.NormalCollisionDirection * (-result.Depth * 0.5f));
+                circleA.BodyColor = RED;
+                circleB.BodyColor = RED;
+            }
+        }
+    }
+}
+
+void DetectPolygonCollision(vector <RigidBody> & bodysVector)
+{
+
+    for(RigidBody& body : bodysVector)
+    {
+        if(body.shapeType == ShapeType::Box)
+            body.BodyColor = GRAY;
+    }
+
+    for (int i = 0 ; i < bodysVector.size() - 1 ; i++)
+    {
+        if (bodysVector[i].shapeType != ShapeType::Box)
+            continue;
+
+        vector<Vec2> verticesA = bodysVector[i].GetTransformedVertices();
+
+        for (int j = i + 1 ; j < bodysVector.size() ; j++)
+        {
+            if(bodysVector[j].shapeType != ShapeType::Box)
+                continue;
+
+            vector<Vec2> verticesB = bodysVector[j].GetTransformedVertices();
+            Collision::PolygonCollisionResult result = Collision::IsPolygonSIntersect(verticesA , verticesB);
+            if (result.IsIntersect)
+            {
+                bodysVector[i].MoveBy(result.NormalCollisionDirection * (-result.Depth * 0.5f) );
+                bodysVector[j].MoveBy(result.NormalCollisionDirection * (result.Depth * 0.5f) );
+
+                bodysVector[i].BodyColor = RED;
+                bodysVector[j].BodyColor = RED;
+            }
+        }
+    }
+}
+
+void DetectPolygonCircleCollision(vector <RigidBody> & bodysVector)
+{
+    for(RigidBody& body : bodysVector)
+    {
+        body.BodyColor = GRAY;
+    }
+
+    for (int i = 0 ; i < bodysVector.size() - 1 ; i++)
+    {
+        RigidBody& bodyA = bodysVector[i];
+
+        for (int j = i + 1 ; j < bodysVector.size() ; j++)
+        {
+            RigidBody& bodyB = bodysVector[j];
+
+            if(bodyA.shapeType == ShapeType::Box && bodyB.shapeType == ShapeType::Circle)
+            {
+                auto verticesA = bodyA.GetTransformedVertices();
+                Collision::PolygonCircleCollisionResult result = Collision::IsPolygonCircleIntersect(verticesA , bodyB.Position , bodyB.Radius);
+                if (result.IsIntersect)
+                {
+                    bodysVector[i].MoveBy(result.NormalCollisionDirection * (result.Depth * 0.5f) );
+                    bodysVector[j].MoveBy(result.NormalCollisionDirection * (-result.Depth * 0.5f) );
+
+                    bodysVector[i].BodyColor = RED;
+                    bodysVector[j].BodyColor = RED;
+                }
+            }
+            else if (bodyA.shapeType == ShapeType::Circle && bodyB.shapeType == ShapeType::Box)
+            {
+                auto verticesB = bodyB.GetTransformedVertices();
+                Collision::PolygonCircleCollisionResult result = Collision::IsPolygonCircleIntersect(verticesB , bodyA.Position , bodyA.Radius);
+                if (result.IsIntersect)
+                {
+                    bodysVector[i].MoveBy(result.NormalCollisionDirection * (-result.Depth * 0.5f) );
+                    bodysVector[j].MoveBy(result.NormalCollisionDirection * (result.Depth * 0.5f) );
+
+                    bodysVector[i].BodyColor = RED;
+                    bodysVector[j].BodyColor = RED;
+                }
+            }
+        }
+    }
+}
+
+void UpdatePhysics(vector<RigidBody> & bodysVector)
+{
+    // DetectPolygonCollision(bodysVector);
+    // DetectCircleCollision(bodysVector);
+    DetectPolygonCircleCollision(bodysVector);
+}
+
+void UpdateControls(Camera2D& camera , vector<RigidBody> & bodysVector)
 {
     float dx = 0.0f;
     float dy = 0.0f;
     float speed = 450.0f;
+    float rotation = world::pi * 0.8f* GetFrameTime();
 
     if (IsKeyDown(KEY_RIGHT))
     {
@@ -40,7 +172,7 @@ void UpdateCamera(Camera2D& camera , vector<RigidBody> & bodysVector)
         dy += 2;
     }
 
-    if (IsKeyPressed(KEY_A))
+    if (IsKeyPressed(KEY_X))
     {
         camera.zoom += 0.2f;
     }
@@ -48,6 +180,14 @@ void UpdateCamera(Camera2D& camera , vector<RigidBody> & bodysVector)
     if (IsKeyPressed(KEY_Z))
     {
         camera.zoom -= 0.2f;
+    }
+    if (IsKeyDown(KEY_A))
+    {
+        bodysVector[1].RotateBy(-rotation);
+    }
+    if (IsKeyDown(KEY_D))
+    {
+        bodysVector[1].RotateBy(rotation);
     }
 
     camera.zoom = clamp(camera.zoom, 0.1f, 10.0f);
@@ -59,30 +199,6 @@ void UpdateCamera(Camera2D& camera , vector<RigidBody> & bodysVector)
         Vec2 displacement = direction * speed * GetFrameTime();
 
         bodysVector[1].MoveBy(displacement);
-    }
-
-    for (int i = 0 ; i < bodysVector.size() - 1 ; i++)
-    {
-        if (bodysVector[i].shapeType == ShapeType::Box)
-        {
-            bodysVector[i].RotateBy(world::pi * 0.5f * GetFrameTime());
-        }
-    }
-
-    for (int i = 0 ; i < bodysVector.size() - 1 ; i++)
-    {
-        RigidBody & circleA = bodysVector[i];
-        for (int j = i + 1 ; j < bodysVector.size() ; j++)
-        {
-            RigidBody & circleB = bodysVector[j];
-            Collision::CollisionResult result = Collision::IsIntersectCircle(circleA.Position , circleA.Radius , circleB.Position , circleB.Radius);
-            if (result.IsIntersect)
-            {
-                circleA.MoveBy( result.NormalCollisionDirection * (result.Depth * 0.5f));
-                circleB.MoveBy( result.NormalCollisionDirection * (-result.Depth * 0.5f));
-                // cout<<result.Depth<<endl;
-            }
-        }
     }
 }
 
@@ -138,14 +254,32 @@ vector<RigidBody> MakeBodies(int num)
     return Bodies;
 }
 
+// void ApplyGravity(vector<RigidBody>& Bodies)
+// {   
+//     for(RigidBody &body : Bodies)
+//     {
+//         if (body.Position.Y + body.Radius < world::ground)
+//         {
+//             float depth = (body.Position.Y + body.Radius) -  world::ground;
+//             body.Position.Y -=depth;
+//         }
+//         else
+//         {
+//             body.LinearVelocity.Y += 9.81f * GetFrameTime();
+//             body.Position += body.LinearVelocity * GetFrameTime();
+//         }
+        
+//     }
+// }
+
 // --------------------------------------------------
 // DRAWING
 // --------------------------------------------------
 
-void DrawBodies(const vector<RigidBody>& Bodies)
+void DrawBodies(vector<RigidBody>& Bodies)
 {
     
-    for(RigidBody body : Bodies)
+    for(RigidBody &body : Bodies)
     {
         if(body.shapeType == ShapeType::Circle)
         {
@@ -173,10 +307,13 @@ void DrawBodies(const vector<RigidBody>& Bodies)
                     {p2.X, p2.Y},
                     body.BodyColor
                 );
+
             }           
         }
     }
 }
+
+
 
 // --------------------------------------------------
 // MAIN
@@ -203,13 +340,18 @@ int main()
     camera.rotation = 0.0f;
     camera.zoom = 1.0f;
 
+    // RotateBodys(Bodies , world::pi * 0.25f);
     // --------------------------------------------------
     // GAME LOOP
     // --------------------------------------------------
 
     while(!WindowShouldClose())
     {
-        UpdateCamera(camera , Bodies);
+        // ApplyGravity(Bodies);
+
+        UpdateControls(camera , Bodies);
+
+        UpdatePhysics(Bodies);
 
         BeginDrawing();
 
