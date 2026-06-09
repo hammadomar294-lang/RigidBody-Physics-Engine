@@ -16,30 +16,16 @@ using namespace std;
 class Collision
 {
 public:
-    struct CircleCollisionResult
+    struct CollisionResult
     {
         bool IsIntersect = false;
-        float Depth = 0.0f;
-        Vec2 NormalCollisionDirection = {0.0f,0.0f};
-    };
-
-    struct PolygonCollisionResult
-    {
-        bool IsIntersect = true;
-        float Depth = numeric_limits<float>::max();
-        Vec2 NormalCollisionDirection = {0.0f,0.0f};
-    };
-    struct PolygonCircleCollisionResult
-    {
-        bool IsIntersect = true;
         float Depth = numeric_limits<float>::max();
         Vec2 NormalCollisionDirection = {0.0f,0.0f};
     };
 
-
-    static CircleCollisionResult IsIntersectCircle(const Vec2 & circleA , float radiusA , const Vec2 & circleB , float radiusB);
-    static PolygonCollisionResult IsPolygonSIntersect(const vector<Vec2> & verticesA , const vector<Vec2> & verticesB);
-    static PolygonCircleCollisionResult IsPolygonCircleIntersect(const vector<Vec2> & vertices , const Vec2 & circleCenter , float radius);
+    static CollisionResult IsIntersectCircle(const Vec2 & circleA , float radiusA , const Vec2 & circleB , float radiusB);
+    static CollisionResult IsPolygonSIntersect(const vector<Vec2> & verticesA , const vector<Vec2> & verticesB);
+    static CollisionResult IsPolygonCircleIntersect(const vector<Vec2> & vertices , const Vec2 & circleCenter , float radius);
 
 private:
     // polygon helper

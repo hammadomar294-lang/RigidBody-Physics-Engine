@@ -1,6 +1,17 @@
 #ifndef WORLD_H
 #define WORLD_H
 
+#include "../math/vector2.h"
+#include "RigidBody.h"
+#include "collision/Collision.h"
+
+#include <vector>
+#include <cstdlib>
+#include <ctime>
+
+#include "raylib.h"
+
+using namespace std;
 class world
 {
 public:
@@ -15,8 +26,18 @@ public:
     static constexpr float MaxMass = 1000.0 * 10000.0f; 
 
     static constexpr float pi = 3.14159265359f;
-    static constexpr float gravity = 9.81f;
-    static constexpr float ground = 720.0f;
+    static Vec2 gravity = {0.0f ,9.81f};
+
+    vector<RigidBody> bodysVector;
+
+    void AddBody(const RigidBody & body);
+    bool RemoveBody(RigidBody & body);
+    int IsBodyExist(const RigidBody & body) const;
+    RigidBody GetBody(int index) const;
+
+
+    void UpdateWorld();
+   
 };
 
 #endif

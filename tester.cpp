@@ -8,7 +8,17 @@
 #include "physics/RigidBody.h"
 #include "math/math.h"
 #include "physics/collision/Collision.h"
+
+#include "physics/world.h"
 using namespace std;
+
+void ResetAllToGray(vector<RigidBody> & bodysVector)
+{
+    for(RigidBody& body : bodysVector)
+    {
+        body.BodyColor = GRAY;
+    }
+}
 
 // --------------------------------------------------
 // CAMERA
@@ -28,12 +38,6 @@ void RotateBodys(vector<RigidBody> & bodysVector , float angle)
 
 void DetectCircleCollision(vector <RigidBody> & bodysVector)
 {
-    for(RigidBody& body : bodysVector)
-    {
-        if(body.shapeType == ShapeType::Circle)
-            body.BodyColor = GRAY;
-    }
-
     for (int i = 0 ; i < bodysVector.size() - 1 ; i++)
     {
         if (bodysVector[i].shapeType != ShapeType::Circle)
@@ -46,7 +50,7 @@ void DetectCircleCollision(vector <RigidBody> & bodysVector)
                 continue;
 
             RigidBody & circleB = bodysVector[j];
-            Collision::CircleCollisionResult result = Collision::IsIntersectCircle(circleA.Position , circleA.Radius , circleB.Position , circleB.Radius);
+            Collision::CollisionResult result = Collision::IsIntersectCircle(circleA.Position , circleA.Radius , circleB.Position , circleB.Radius);
             if (result.IsIntersect)
             {
                 circleA.MoveBy( result.NormalCollisionDirection * (result.Depth * 0.5f));
@@ -60,13 +64,6 @@ void DetectCircleCollision(vector <RigidBody> & bodysVector)
 
 void DetectPolygonCollision(vector <RigidBody> & bodysVector)
 {
-
-    for(RigidBody& body : bodysVector)
-    {
-        if(body.shapeType == ShapeType::Box)
-            body.BodyColor = GRAY;
-    }
-
     for (int i = 0 ; i < bodysVector.size() - 1 ; i++)
     {
         if (bodysVector[i].shapeType != ShapeType::Box)
@@ -80,7 +77,7 @@ void DetectPolygonCollision(vector <RigidBody> & bodysVector)
                 continue;
 
             vector<Vec2> verticesB = bodysVector[j].GetTransformedVertices();
-            Collision::PolygonCollisionResult result = Collision::IsPolygonSIntersect(verticesA , verticesB);
+            Collision::CollisionResult result = Collision::IsPolygonSIntersect(verticesA , verticesB);
             if (result.IsIntersect)
             {
                 bodysVector[i].MoveBy(result.NormalCollisionDirection * (-result.Depth * 0.5f) );
@@ -95,11 +92,6 @@ void DetectPolygonCollision(vector <RigidBody> & bodysVector)
 
 void DetectPolygonCircleCollision(vector <RigidBody> & bodysVector)
 {
-    for(RigidBody& body : bodysVector)
-    {
-        body.BodyColor = GRAY;
-    }
-
     for (int i = 0 ; i < bodysVector.size() - 1 ; i++)
     {
         RigidBody& bodyA = bodysVector[i];
@@ -111,7 +103,7 @@ void DetectPolygonCircleCollision(vector <RigidBody> & bodysVector)
             if(bodyA.shapeType == ShapeType::Box && bodyB.shapeType == ShapeType::Circle)
             {
                 auto verticesA = bodyA.GetTransformedVertices();
-                Collision::PolygonCircleCollisionResult result = Collision::IsPolygonCircleIntersect(verticesA , bodyB.Position , bodyB.Radius);
+                Collision::CollisionResult result = Collision::IsPolygonCircleIntersect(verticesA , bodyB.Position , bodyB.Radius);
                 if (result.IsIntersect)
                 {
                     bodysVector[i].MoveBy(result.NormalCollisionDirection * (result.Depth * 0.5f) );
@@ -124,7 +116,7 @@ void DetectPolygonCircleCollision(vector <RigidBody> & bodysVector)
             else if (bodyA.shapeType == ShapeType::Circle && bodyB.shapeType == ShapeType::Box)
             {
                 auto verticesB = bodyB.GetTransformedVertices();
-                Collision::PolygonCircleCollisionResult result = Collision::IsPolygonCircleIntersect(verticesB , bodyA.Position , bodyA.Radius);
+                Collision::CollisionResult result = Collision::IsPolygonCircleIntersect(verticesB , bodyA.Position , bodyA.Radius);
                 if (result.IsIntersect)
                 {
                     bodysVector[i].MoveBy(result.NormalCollisionDirection * (-result.Depth * 0.5f) );
@@ -140,8 +132,9 @@ void DetectPolygonCircleCollision(vector <RigidBody> & bodysVector)
 
 void UpdatePhysics(vector<RigidBody> & bodysVector)
 {
-    // DetectPolygonCollision(bodysVector);
-    // DetectCircleCollision(bodysVector);
+    ResetAllToGray(bodysVector);
+    DetectPolygonCollision(bodysVector);
+    DetectCircleCollision(bodysVector);
     DetectPolygonCircleCollision(bodysVector);
 }
 
@@ -201,10 +194,6 @@ void UpdateControls(Camera2D& camera , vector<RigidBody> & bodysVector)
         bodysVector[1].MoveBy(displacement);
     }
 }
-
-// --------------------------------------------------
-// MAKING BODYS
-// --------------------------------------------------
 
 vector<RigidBody> MakeBodies(int num)
 {
@@ -272,10 +261,6 @@ vector<RigidBody> MakeBodies(int num)
 //     }
 // }
 
-// --------------------------------------------------
-// DRAWING
-// --------------------------------------------------
-
 void DrawBodies(vector<RigidBody>& Bodies)
 {
     
@@ -313,12 +298,6 @@ void DrawBodies(vector<RigidBody>& Bodies)
     }
 }
 
-
-
-// --------------------------------------------------
-// MAIN
-// --------------------------------------------------
-
 int main()
 {
     InitWindow(1280, 720, "Physics Engine");
@@ -327,10 +306,10 @@ int main()
 
     srand(time(nullptr));
 
-    vector<RigidBody> Bodies = MakeBodies(10);
+    world world1;
 
-    // -------- CREATE RANDOM BODIES --------
-    // your body creation code here
+    vector<RigidBody> Bodies = MakeBodies(20);
+    world1.bodysVector = Bodies;
 
     Camera2D camera = {0};
 
@@ -340,18 +319,12 @@ int main()
     camera.rotation = 0.0f;
     camera.zoom = 1.0f;
 
-    // RotateBodys(Bodies , world::pi * 0.25f);
-    // --------------------------------------------------
-    // GAME LOOP
-    // --------------------------------------------------
-
     while(!WindowShouldClose())
     {
-        // ApplyGravity(Bodies);
 
         UpdateControls(camera , Bodies);
 
-        UpdatePhysics(Bodies);
+        world1.UpdateWorld();
 
         BeginDrawing();
 

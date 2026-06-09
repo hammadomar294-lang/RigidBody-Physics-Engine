@@ -53,6 +53,7 @@ class RigidBody
     void MoveBy(Vec2 amount);
     void MoveTo(Vec2 position);
     void RotateBy(float amount);
+    void UpdatePhysics();
 
     RigidBody(const Vec2 & position , float mass , float density , float restitution , float area ,
                               bool isStatic , ShapeType shapetype , Color color , float radius =1, float width =1, float height =1);

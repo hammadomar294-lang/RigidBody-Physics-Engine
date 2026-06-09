@@ -124,3 +124,9 @@ void RigidBody::RotateBy(float amount)
     Rotation += amount;
     VerticesNeedsUpdate = true; 
 }
+
+void RigidBody::UpdatePhysics()
+{
+    Position += LinearVelocity * GetFrameTime();
+    Rotation += RotationVelocity * GetFrameTime();
+}

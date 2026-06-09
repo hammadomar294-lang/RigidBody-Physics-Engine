@@ -1,9 +1,9 @@
 #include "Collision.h"
 
 
-Collision::CircleCollisionResult Collision::IsIntersectCircle(const Vec2 &circleA, float radiusA, const Vec2 &circleB, float radiusB)
+Collision::CollisionResult Collision::IsIntersectCircle(const Vec2 &circleA, float radiusA, const Vec2 &circleB, float radiusB)
 {
-    CircleCollisionResult result; // default to false
+    CollisionResult result; // default to false
 
     float radii = radiusA + radiusB;
     float distance = math::Distance(circleA , circleB);
@@ -24,9 +24,9 @@ Collision::CircleCollisionResult Collision::IsIntersectCircle(const Vec2 &circle
 }
 
 
-Collision::PolygonCollisionResult Collision::IsPolygonSIntersect(const vector<Vec2> &verticesA, const vector<Vec2> &verticesB)
+Collision::CollisionResult Collision::IsPolygonSIntersect(const vector<Vec2> &verticesA, const vector<Vec2> &verticesB)
 {
-    PolygonCollisionResult result; // default to true
+    CollisionResult result; // default to true
 
     pair<float,float> FirstPair;
     pair<float,float> SecondPair;
@@ -102,9 +102,9 @@ Collision::PolygonCollisionResult Collision::IsPolygonSIntersect(const vector<Ve
 }
 
 
-Collision::PolygonCircleCollisionResult Collision::IsPolygonCircleIntersect(const vector<Vec2> &vertices, const Vec2 &circleCenter, float radius)
+Collision::CollisionResult Collision::IsPolygonCircleIntersect(const vector<Vec2> &vertices, const Vec2 &circleCenter, float radius)
 {
-    PolygonCircleCollisionResult result;
+    CollisionResult result;
     pair<float,float> FirstPair;
     pair<float,float> SecondPair;
 
@@ -127,6 +127,7 @@ Collision::PolygonCircleCollisionResult Collision::IsPolygonCircleIntersect(cons
             result.IsIntersect = false;
             return result;
         }
+        result.IsIntersect = true;
         // calculate depth and normal
         float axisDepth = min(FirstPair.second - SecondPair.first , SecondPair.second - FirstPair.first);
         
@@ -152,6 +153,7 @@ Collision::PolygonCircleCollisionResult Collision::IsPolygonCircleIntersect(cons
         result.IsIntersect = false;
         return result;
     }
+    result.IsIntersect = true;
     // calculate depth and normal
     float axisDepth = min(FirstPair.second - SecondPair.first , SecondPair.second - FirstPair.first);
     if (axisDepth < result.Depth)
@@ -196,8 +198,8 @@ Vec2 Collision::CalculateCenter(const vector<Vec2> &vertices)
 
     for (const auto & v : vertices)
     {
-        sumX = v.X;
-        sumY = v.Y;
+        sumX += v.X;
+        sumY += v.Y;
     }
     return {sumX / (float)vertices.size() , sumY / (float)vertices.size()};
 }
@@ -208,8 +210,9 @@ pair<float , float> Collision::ProjectCircle(const Vec2 &circleCenter, float rad
     float Max = numeric_limits<float>::lowest();
 
     // we need 2 point on the circle in the direction of the axis so center + or - the axis * radius
-    Vec2 p1 = circleCenter + (axis * radius);
-    Vec2 p2 = circleCenter - (axis * radius);
+    Vec2 direction = axis * radius;
+    Vec2 p1 = circleCenter + direction;
+    Vec2 p2 = circleCenter - direction;
     
     float projection1 = math::Dot(p1,axis);
     float projection2 = math::Dot(p2,axis);
