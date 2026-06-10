@@ -5,12 +5,13 @@
 #include <algorithm>
 #include <raylib.h>
 #include <vector>
+#include <iostream>
 
 #include "../math/math.h"
 #include "../math/vector2.h"
 #include "../math/transform.h"
 
-#include "world.h"
+#include "constants.h"
 
 using namespace std;
 
@@ -28,6 +29,7 @@ class RigidBody
     float Rotation; // the angle from the positive x 
     float RotationVelocity;
 
+    Vec2 Force;
     float Mass;
     float Density;
     float Restitution; // bouncy or not 
@@ -53,7 +55,11 @@ class RigidBody
     void MoveBy(Vec2 amount);
     void MoveTo(Vec2 position);
     void RotateBy(float amount);
+
     void UpdatePhysics();
+
+    void AddForce(const Vec2 &amount);
+    void ApplyImpulse(const Vec2 &impulse);
 
     RigidBody(const Vec2 & position , float mass , float density , float restitution , float area ,
                               bool isStatic , ShapeType shapetype , Color color , float radius =1, float width =1, float height =1);

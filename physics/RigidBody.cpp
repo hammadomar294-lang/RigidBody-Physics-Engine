@@ -2,9 +2,10 @@
 
 
 RigidBody::RigidBody(const Vec2 & position , float mass , float density , float restitution , float area ,
-                              bool isStatic , ShapeType shapetype , Color color  , float radius , float width , float height ) : Position(position) , LinearVelocity(0,0)
+                              bool isStatic , ShapeType shapetype , Color color  , float radius , float width , float height )
+                               : Position(position) , LinearVelocity(0,0) , Force(0.0f,0.0f)
 {
-    this->LinearVelocity = {0,0};
+    
     this->Mass = mass;
     this->Density = density;
     this->Restitution = restitution;
@@ -24,8 +25,9 @@ RigidBody::RigidBody(const Vec2 & position , float mass , float density , float 
     {
         this->Vertices = MakeBoxVertices(width , height);
         this->Triangles = TriangulateBox();
+        this->VerticesNeedsUpdate = true;
     }
-    this->VerticesNeedsUpdate = true;
+    
 }
 
 vector<Vec2> RigidBody::MakeBoxVertices(float width, float height)
@@ -61,11 +63,11 @@ RigidBody RigidBody::CreateCircle(const Vec2 & position , float density , float 
 {
     Color color = GRAY;
     
-    density = clamp(density , world::MinDensity , world::MaxDensity);
+    density = clamp(density , constants::MinDensity , constants::MaxDensity);
     restitution = clamp(restitution , 0.0f , 1.0f);
 
-    float area = radius * radius * world::pi;
-    area = clamp(area , world::MinSize , world::MaxSize);  
+    float area = radius * radius * constants::pi;
+    area = clamp(area , constants::MinSize , constants::MaxSize);  
 
     float mass = area * density;
 
@@ -76,11 +78,11 @@ RigidBody RigidBody::CreateBox(const Vec2 &position, float density, float restit
 {
     Color color = GRAY;
 
-    density = clamp(density , world::MinDensity , world::MaxDensity);
+    density = clamp(density , constants::MinDensity , constants::MaxDensity);
     restitution = clamp(restitution , 0.0f , 1.0f);
 
     float area = width * height;
-    area = clamp(area , world::MinSize , world::MaxSize);  
+    area = clamp(area , constants::MinSize , constants::MaxSize);  
 
     float mass = area * density;
 
@@ -127,6 +129,26 @@ void RigidBody::RotateBy(float amount)
 
 void RigidBody::UpdatePhysics()
 {
+    if (shapeType == ShapeType::Box)
+    {
+        VerticesNeedsUpdate = true;
+    }
+   
+    Vec2 acceleration = Force / Mass ;
+    LinearVelocity += acceleration * GetFrameTime();
+
     Position += LinearVelocity * GetFrameTime();
+
     Rotation += RotationVelocity * GetFrameTime();
+
+    Force = {0.0f , 0.0f};
+}
+
+void RigidBody::AddForce(const Vec2 &amount)
+{
+    Force += amount;
+}
+void RigidBody::ApplyImpulse(const Vec2 &impulse)
+{
+    LinearVelocity += impulse / Mass; 
 }

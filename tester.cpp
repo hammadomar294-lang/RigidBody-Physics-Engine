@@ -8,21 +8,13 @@
 #include "physics/RigidBody.h"
 #include "math/math.h"
 #include "physics/collision/Collision.h"
+#include "physics/constants.h"
 
-#include "physics/world.h"
+
+
 using namespace std;
 
-void ResetAllToGray(vector<RigidBody> & bodysVector)
-{
-    for(RigidBody& body : bodysVector)
-    {
-        body.BodyColor = GRAY;
-    }
-}
-
-// --------------------------------------------------
-// CAMERA
-// --------------------------------------------------
+void BounceScreen(vector<RigidBody>& bodies , Camera2D & camera);
 
 void RotateBodys(vector<RigidBody> & bodysVector , float angle)
 {
@@ -34,6 +26,16 @@ void RotateBodys(vector<RigidBody> & bodysVector , float angle)
         }
     }
 
+}
+
+void ResolveCollision(RigidBody & bodyA , RigidBody & bodyB , Vec2 normal)
+{
+    Vec2 relativeVelocity = bodyB.LinearVelocity - bodyA.LinearVelocity;
+    float minRestitution = min(bodyA.Restitution , bodyB.Restitution);
+    // impulse = -(1 + minRestitution) * Dot(relativeVelocity , nomal) / 1/massA + 1/massB
+    float impulse = -(1 + minRestitution) * math::Dot(relativeVelocity , normal) / (1/bodyA.Mass + 1/bodyB.Mass);
+    bodyA.LinearVelocity -= normal * (impulse / bodyA.Mass);
+    bodyB.LinearVelocity += normal * (impulse / bodyB.Mass);
 }
 
 void DetectCircleCollision(vector <RigidBody> & bodysVector)
@@ -55,8 +57,7 @@ void DetectCircleCollision(vector <RigidBody> & bodysVector)
             {
                 circleA.MoveBy( result.NormalCollisionDirection * (result.Depth * 0.5f));
                 circleB.MoveBy( result.NormalCollisionDirection * (-result.Depth * 0.5f));
-                circleA.BodyColor = RED;
-                circleB.BodyColor = RED;
+                ResolveCollision(circleA , circleB , result.NormalCollisionDirection);
             }
         }
     }
@@ -82,9 +83,7 @@ void DetectPolygonCollision(vector <RigidBody> & bodysVector)
             {
                 bodysVector[i].MoveBy(result.NormalCollisionDirection * (-result.Depth * 0.5f) );
                 bodysVector[j].MoveBy(result.NormalCollisionDirection * (result.Depth * 0.5f) );
-
-                bodysVector[i].BodyColor = RED;
-                bodysVector[j].BodyColor = RED;
+                ResolveCollision(bodysVector[i] , bodysVector[j] , result.NormalCollisionDirection);
             }
         }
     }
@@ -108,9 +107,7 @@ void DetectPolygonCircleCollision(vector <RigidBody> & bodysVector)
                 {
                     bodysVector[i].MoveBy(result.NormalCollisionDirection * (result.Depth * 0.5f) );
                     bodysVector[j].MoveBy(result.NormalCollisionDirection * (-result.Depth * 0.5f) );
-
-                    bodysVector[i].BodyColor = RED;
-                    bodysVector[j].BodyColor = RED;
+                    ResolveCollision(bodyB, bodyA , result.NormalCollisionDirection);
                 }
             }
             else if (bodyA.shapeType == ShapeType::Circle && bodyB.shapeType == ShapeType::Box)
@@ -121,20 +118,31 @@ void DetectPolygonCircleCollision(vector <RigidBody> & bodysVector)
                 {
                     bodysVector[i].MoveBy(result.NormalCollisionDirection * (-result.Depth * 0.5f) );
                     bodysVector[j].MoveBy(result.NormalCollisionDirection * (result.Depth * 0.5f) );
-
-                    bodysVector[i].BodyColor = RED;
-                    bodysVector[j].BodyColor = RED;
+                    ResolveCollision(bodyA, bodyB , result.NormalCollisionDirection);
                 }
             }
         }
     }
 }
 
-void UpdatePhysics(vector<RigidBody> & bodysVector)
+void UpdateBodyPhysics(vector<RigidBody> & bodysVector)
 {
-    ResetAllToGray(bodysVector);
+    for(auto & body : bodysVector)
+    {
+        body.UpdatePhysics();
+    }
+}
+
+void UpdatePhysics(vector<RigidBody> & bodysVector , Camera2D & camera)
+{
+    BounceScreen(bodysVector , camera);
+
+    UpdateBodyPhysics(bodysVector);
+
     DetectPolygonCollision(bodysVector);
+
     DetectCircleCollision(bodysVector);
+
     DetectPolygonCircleCollision(bodysVector);
 }
 
@@ -142,8 +150,9 @@ void UpdateControls(Camera2D& camera , vector<RigidBody> & bodysVector)
 {
     float dx = 0.0f;
     float dy = 0.0f;
-    float speed = 450.0f;
-    float rotation = world::pi * 0.8f* GetFrameTime();
+    float forceMagnitude = 1800000.0f;
+    float rotation = constants::pi * 0.8f* GetFrameTime();
+    
 
     if (IsKeyDown(KEY_RIGHT))
     {
@@ -182,84 +191,24 @@ void UpdateControls(Camera2D& camera , vector<RigidBody> & bodysVector)
     {
         bodysVector[1].RotateBy(rotation);
     }
+    // if (IsKeyPressed(KEY_SPACE))
+    // {
+    //     forceMagnitude = 0;
+    //     cout<<forceMagnitude<<endl;
+    // }
 
     camera.zoom = clamp(camera.zoom, 0.1f, 10.0f);
 
     if (dx != 0 || dy != 0)
     {
         Vec2 input = {dx , dy};
-        Vec2 direction = input.Normalize();
-        Vec2 displacement = direction * speed * GetFrameTime();
+        Vec2 forceDirection = input.Normalize();
+        Vec2 force = forceDirection * forceMagnitude;
 
-        bodysVector[1].MoveBy(displacement);
+        bodysVector[1].AddForce(force);
     }
+    bodysVector[1].BodyColor = BLUE;
 }
-
-vector<RigidBody> MakeBodies(int num)
-{
-    vector<RigidBody> Bodies;
-    int padding = 100;
-    for(int i = 0; i < num; i++)
-    {
-        int type = rand() % 2;
-
-        Vec2 position(
-            rand() % (1200 - padding) ,
-            rand() % (700 - padding)
-        );
-
-        if(type == 0)
-        {
-            float radius = 10 + rand() % 40;
-
-            Bodies.push_back(
-                RigidBody::CreateCircle(
-                    position,
-                    1.0f,
-                    0.5f,
-                    false,
-                    radius
-                )
-            );
-        }
-        else
-        {
-            float width  = 20 + rand() % 80;
-            float height = 20 + rand() % 80;
-
-            Bodies.push_back(
-                RigidBody::CreateBox(
-                    position,
-                    1.0f,
-                    0.5f,
-                    false,
-                    width,
-                    height
-                )
-            );
-        }
-    }
-
-    return Bodies;
-}
-
-// void ApplyGravity(vector<RigidBody>& Bodies)
-// {   
-//     for(RigidBody &body : Bodies)
-//     {
-//         if (body.Position.Y + body.Radius < world::ground)
-//         {
-//             float depth = (body.Position.Y + body.Radius) -  world::ground;
-//             body.Position.Y -=depth;
-//         }
-//         else
-//         {
-//             body.LinearVelocity.Y += 9.81f * GetFrameTime();
-//             body.Position += body.LinearVelocity * GetFrameTime();
-//         }
-        
-//     }
-// }
 
 void DrawBodies(vector<RigidBody>& Bodies)
 {
@@ -298,6 +247,129 @@ void DrawBodies(vector<RigidBody>& Bodies)
     }
 }
 
+vector<RigidBody> MakeBodies(int num)
+{
+    vector<RigidBody> Bodies;
+    int padding = 100;
+    for(int i = 0; i < num; i++)
+    {
+        int type = rand() % 2;
+
+        float restitution = (float)rand() / RAND_MAX;
+
+        float density = 0.5f + ((float)rand() / RAND_MAX) * 1.0f;
+
+        Vec2 position(
+            rand() % (1200 - padding) ,
+            rand() % (700 - padding)
+        );
+
+        if(type == 0)
+        {
+            float radius = 10 + rand() % 40;
+
+            Bodies.push_back(
+                RigidBody::CreateCircle(
+                    position,
+                    density,
+                    restitution,
+                    false,
+                    radius
+                )
+            );
+        }
+        else
+        {
+            float width  = 20 + rand() % 80;
+            float height = 20 + rand() % 80;
+
+            Bodies.push_back(
+                RigidBody::CreateBox(
+                    position,
+                    density,
+                    restitution,
+                    false,
+                    width,
+                    height
+                )
+            );
+        }
+    }
+
+    return Bodies;
+}
+
+void BounceScreen(vector<RigidBody>& bodies , Camera2D & camera )
+{
+    Vector2 rayCamMin = GetScreenToWorld2D({0, 0}, camera);
+    Vector2 rayCamMax = GetScreenToWorld2D(
+    {
+        (float)GetScreenWidth(),
+        (float)GetScreenHeight()
+    }, camera);
+
+    Vec2 camMin(rayCamMin.x, rayCamMin.y);
+    Vec2 camMax(rayCamMax.x, rayCamMax.y);
+    for (RigidBody& body : bodies)
+    {
+        if (body.shapeType == ShapeType::Circle)
+        {
+            if (body.Position.X - body.Radius < camMin.X)
+            {
+                body.Position.X = camMin.X + body.Radius;
+                body.LinearVelocity.X *= -0.9;
+            }
+
+            if (body.Position.X + body.Radius > camMax.X)
+            {
+                body.Position.X = camMax.X - body.Radius;
+                body.LinearVelocity.X *= -0.9;
+            }
+
+            if (body.Position.Y - body.Radius < camMin.Y)
+            {
+                body.Position.Y = camMin.Y + body.Radius;
+                body.LinearVelocity.Y *= -0.9;
+            }
+
+            if (body.Position.Y + body.Radius > camMax.Y)
+            {
+                body.Position.Y = camMax.Y - body.Radius;
+                body.LinearVelocity.Y *= -0.9;
+            }
+        }
+        else if(body.shapeType == ShapeType::Box)
+        {
+            float halfWidth = body.Width * 0.5f;
+            float halfHeight = body.Height * 0.5f;
+
+            if (body.Position.X - halfWidth < camMin.X)
+            {
+                body.Position.X = camMin.X + halfWidth;
+                body.LinearVelocity.X *= -0.9f;
+            }
+
+            if (body.Position.X + halfWidth > camMax.X)
+            {
+                body.Position.X = camMax.X - halfWidth;
+                body.LinearVelocity.X *= -0.9f;
+            }
+
+            if (body.Position.Y - halfHeight < camMin.Y)
+            {
+                body.Position.Y = camMin.Y + halfHeight;
+                body.LinearVelocity.Y *= -0.9f;
+            }
+
+            if (body.Position.Y + halfHeight > camMax.Y)
+            {
+                body.Position.Y = camMax.Y - halfHeight;
+                body.LinearVelocity.Y *= -0.9f;
+            }
+        }
+    }
+}
+
 int main()
 {
     InitWindow(1280, 720, "Physics Engine");
@@ -306,10 +378,7 @@ int main()
 
     srand(time(nullptr));
 
-    world world1;
-
     vector<RigidBody> Bodies = MakeBodies(20);
-    world1.bodysVector = Bodies;
 
     Camera2D camera = {0};
 
@@ -321,10 +390,9 @@ int main()
 
     while(!WindowShouldClose())
     {
+        UpdatePhysics(Bodies , camera);
 
         UpdateControls(camera , Bodies);
-
-        world1.UpdateWorld();
 
         BeginDrawing();
 

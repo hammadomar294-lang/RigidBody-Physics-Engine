@@ -26,7 +26,7 @@ Collision::CollisionResult Collision::IsIntersectCircle(const Vec2 &circleA, flo
 
 Collision::CollisionResult Collision::IsPolygonSIntersect(const vector<Vec2> &verticesA, const vector<Vec2> &verticesB)
 {
-    CollisionResult result; // default to true
+    CollisionResult result; 
 
     pair<float,float> FirstPair;
     pair<float,float> SecondPair;
@@ -48,9 +48,10 @@ Collision::CollisionResult Collision::IsPolygonSIntersect(const vector<Vec2> &ve
         if (FirstPair.first > SecondPair.second || SecondPair.first >FirstPair.second)
         {
             result.IsIntersect = false;
-            break;
+            return result;
         }
         // calculate depth and normal
+        result.IsIntersect = true;
         float axisDepth = min(FirstPair.second - SecondPair.first , SecondPair.second - FirstPair.first);
         if (axisDepth < result.Depth)
         {
@@ -76,9 +77,9 @@ Collision::CollisionResult Collision::IsPolygonSIntersect(const vector<Vec2> &ve
         if (FirstPair.first > SecondPair.second || SecondPair.first >FirstPair.second)
         {
             result.IsIntersect = false;
-            break;
+            return result;
         }
-
+        result.IsIntersect = true;
         // calculate depth and normal
         float axisDepth = min(FirstPair.second - SecondPair.first , SecondPair.second - FirstPair.first);
         if (axisDepth < result.Depth)
