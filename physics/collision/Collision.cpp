@@ -13,7 +13,7 @@ Collision::CollisionResult Collision::IsIntersectCircle(const Vec2 &circleA, flo
 
     float depth = radii - distance;
 
-    Vec2 collisionDirection = circleA - circleB;
+    Vec2 collisionDirection = circleB - circleA;
     Vec2 normal = collisionDirection.Normalize();
 
     result.NormalCollisionDirection = normal;
@@ -165,7 +165,7 @@ Collision::CollisionResult Collision::IsPolygonCircleIntersect(const vector<Vec2
 
     Vec2 polyCenter = CalculateCenter(vertices);
 
-    Vec2 direction = polyCenter  -  circleCenter;
+    Vec2 direction = circleCenter  -  polyCenter;
 
     if (math::Dot(direction , result.NormalCollisionDirection) < 0)
     {

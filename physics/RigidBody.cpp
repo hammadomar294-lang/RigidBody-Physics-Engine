@@ -11,6 +11,11 @@ RigidBody::RigidBody(const Vec2 & position , float mass , float density , float 
     this->Restitution = restitution;
     this->IsStatic = isStatic;
 
+    if (!this->IsStatic)
+        this->InvMass = 1.0/mass;
+    else
+        this->InvMass = 0.0;
+
     this->Area = area;
     this->Radius = radius;
     this->Width = width;
@@ -133,15 +138,18 @@ void RigidBody::UpdatePhysics()
     {
         VerticesNeedsUpdate = true;
     }
-   
-    Vec2 acceleration = Force / Mass ;
-    LinearVelocity += acceleration * GetFrameTime();
+    if (!this->IsStatic)
+    {
+        Vec2 acceleration = constants::gravity;
+        LinearVelocity += acceleration * GetFrameTime();
 
-    Position += LinearVelocity * GetFrameTime();
+        Position += LinearVelocity * GetFrameTime();
 
-    Rotation += RotationVelocity * GetFrameTime();
+        Rotation += RotationVelocity * GetFrameTime();
 
-    Force = {0.0f , 0.0f};
+        Force = {0.0f , 0.0f};
+    }
+    
 }
 
 void RigidBody::AddForce(const Vec2 &amount)
@@ -150,5 +158,5 @@ void RigidBody::AddForce(const Vec2 &amount)
 }
 void RigidBody::ApplyImpulse(const Vec2 &impulse)
 {
-    LinearVelocity += impulse / Mass; 
+    LinearVelocity += impulse * InvMass; 
 }

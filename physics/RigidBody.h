@@ -31,6 +31,7 @@ class RigidBody
 
     Vec2 Force;
     float Mass;
+    float InvMass;
     float Density;
     float Restitution; // bouncy or not 
     float Area; // will not be passed but calculated

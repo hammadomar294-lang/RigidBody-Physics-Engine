@@ -16,7 +16,7 @@ public:
     static constexpr float MaxMass = 1000.0 * 10000.0f; 
 
     static constexpr float pi = 3.14159265359f;
-    inline static Vec2 gravity = {0.0f ,9.81f};
+    inline static Vec2 gravity = {0.0f ,500.0f};
 };
 
 #endif
