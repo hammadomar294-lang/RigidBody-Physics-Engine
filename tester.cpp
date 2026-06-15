@@ -2,6 +2,7 @@
 #include <vector>
 #include <cstdlib>
 #include <ctime>
+#include <chrono>
 
 #include "raylib.h"
 
@@ -9,11 +10,14 @@
 #include "math/math.h"
 #include "physics/collision/Collision.h"
 #include "physics/constants.h"
-
-vector <RigidBody> Bodies;
-
+#include "physics/Manifold.h"
+#include "physics/AABB.h"
 
 using namespace std;
+
+vector <Manifold> manifolds;
+vector <RigidBody> Bodies;
+vector <Vec2> contactPoints;
 
 void BounceScreen(vector<RigidBody>& bodies , Camera2D & camera);
 vector<RigidBody> MakeBodies(int num);
@@ -30,51 +34,23 @@ void RotateBodys(vector<RigidBody> & Bodies , float angle)
 
 }
 
-Collision::CollisionResult Collide(RigidBody& bodyA, RigidBody& bodyB)
+bool IsAABBIntersect(RigidBody& bodyA , RigidBody& bodyB)
 {
-    if (bodyA.shapeType == ShapeType::Circle)
-    {
-        if (bodyB.shapeType == ShapeType::Circle)
-        {
-            return Collision::IsIntersectCircle(
-                bodyA.Position,
-                bodyA.Radius,
-                bodyB.Position,
-                bodyB.Radius
-            );
-        }
-        else if (bodyB.shapeType == ShapeType::Box)
-        {
-            Collision::CollisionResult res = Collision::IsPolygonCircleIntersect(bodyB.GetTransformedVertices(),bodyA.Position,bodyA.Radius);
-            res.NormalCollisionDirection = res.NormalCollisionDirection * -1;
-            return res;
-        }
-    }
-    else if (bodyA.shapeType == ShapeType::Box)
-    {
-        if (bodyB.shapeType == ShapeType::Box)
-        {
-            return Collision::IsPolygonSIntersect(
-                bodyA.GetTransformedVertices(),
-                bodyB.GetTransformedVertices()
-            );
-        }
-        else if (bodyB.shapeType == ShapeType::Circle)
-        {
-            return Collision::IsPolygonCircleIntersect(
-                bodyA.GetTransformedVertices(),
-                bodyB.Position,
-                bodyB.Radius
-            );
-        }
-    }
+    AABB a = bodyA.GetAABB();
+    AABB b = bodyB.GetAABB();
 
-    Collision::CollisionResult result;
-    return result;
+    return !(a.Max.X < b.Min.X ||
+             a.Min.X > b.Max.X ||
+             a.Max.Y < b.Min.Y ||
+             a.Min.Y > b.Max.Y);
 }
 
-void ResolveCollision(RigidBody & bodyA , RigidBody & bodyB , Vec2 normal)
+void ResolveCollision(const Manifold & manifold)
 {
+    RigidBody & bodyA = manifold.BodyA; 
+    RigidBody & bodyB = manifold.BodyB; 
+    Vec2 normal = manifold.Normal;
+
     Vec2 relativeVelocity = bodyB.LinearVelocity - bodyA.LinearVelocity;
 
     if (math::Dot(normal , relativeVelocity) > 0.0)
@@ -87,108 +63,18 @@ void ResolveCollision(RigidBody & bodyA , RigidBody & bodyB , Vec2 normal)
     bodyB.LinearVelocity += normal * (impulse * bodyB.InvMass);
 }
 
-void DetectCircleCollision(vector <RigidBody> & Bodies)
-{
-    for (int i = 0 ; i < Bodies.size() - 1 ; i++)
-    {
-        if (Bodies[i].shapeType != ShapeType::Circle)
-            continue;
-        
-        RigidBody & circleA = Bodies[i];
-        for (int j = i + 1 ; j < Bodies.size() ; j++)
-        {
-            if(Bodies[j].shapeType != ShapeType::Circle)
-                continue;
-
-            RigidBody & circleB = Bodies[j];
-            Collision::CollisionResult result = Collision::IsIntersectCircle(circleA.Position , circleA.Radius , circleB.Position , circleB.Radius);
-            if (result.IsIntersect)
-            {
-                circleA.MoveBy( result.NormalCollisionDirection * (-result.Depth * 0.5f));
-                circleB.MoveBy( result.NormalCollisionDirection * (result.Depth * 0.5f));
-                ResolveCollision(circleA , circleB , result.NormalCollisionDirection);
-            }
-        }
-    }
-}
-
-void DetectPolygonCollision(vector <RigidBody> & Bodies)
-{
-    for (int i = 0 ; i < Bodies.size() - 1 ; i++)
-    {
-        if (Bodies[i].shapeType != ShapeType::Box)
-            continue;
-
-        vector<Vec2> verticesA = Bodies[i].GetTransformedVertices();
-
-        for (int j = i + 1 ; j < Bodies.size() ; j++)
-        {
-            if(Bodies[j].shapeType != ShapeType::Box)
-                continue;
-
-            vector<Vec2> verticesB = Bodies[j].GetTransformedVertices();
-            Collision::CollisionResult result = Collision::IsPolygonSIntersect(verticesA , verticesB);
-            if (result.IsIntersect)
-            {
-                Bodies[i].MoveBy(result.NormalCollisionDirection * (-result.Depth * 0.5f) );
-                Bodies[j].MoveBy(result.NormalCollisionDirection * (result.Depth * 0.5f) );
-                ResolveCollision(Bodies[i] , Bodies[j] , result.NormalCollisionDirection);
-            }
-        }
-    }
-}
-
-void DetectPolygonCircleCollision(vector <RigidBody> & Bodies)
-{
-    for (int i = 0 ; i < Bodies.size() - 1 ; i++)
-    {
-        RigidBody& bodyA = Bodies[i];
-
-        for (int j = i + 1 ; j < Bodies.size() ; j++)
-        {
-            RigidBody& bodyB = Bodies[j];
-
-            if(bodyA.shapeType == ShapeType::Box && bodyB.shapeType == ShapeType::Circle)
-            {
-                auto verticesA = bodyA.GetTransformedVertices();
-                Collision::CollisionResult result = Collision::IsPolygonCircleIntersect(verticesA , bodyB.Position , bodyB.Radius);
-                if (result.IsIntersect)
-                {
-                    Bodies[i].MoveBy(result.NormalCollisionDirection * (result.Depth * 0.5f) );
-                    Bodies[j].MoveBy(result.NormalCollisionDirection * (-result.Depth * 0.5f) );
-                    ResolveCollision(bodyB, bodyA , result.NormalCollisionDirection);
-                }
-            }
-            else if (bodyA.shapeType == ShapeType::Circle && bodyB.shapeType == ShapeType::Box)
-            {
-                auto verticesB = bodyB.GetTransformedVertices();
-                Collision::CollisionResult result = Collision::IsPolygonCircleIntersect(verticesB , bodyA.Position , bodyA.Radius);
-                if (result.IsIntersect)
-                {
-                    Bodies[i].MoveBy(result.NormalCollisionDirection * (-result.Depth * 0.5f) );
-                    Bodies[j].MoveBy(result.NormalCollisionDirection * (result.Depth * 0.5f) );
-                    ResolveCollision(bodyA, bodyB , result.NormalCollisionDirection);
-                }
-            }
-        }
-    }
-}
-
-void UpdateBodyPhysics(vector<RigidBody> & Bodies)
+void UpdateBodyPhysics(vector<RigidBody> & Bodies , int iterations)
 {
     for(auto & body : Bodies)
     {
-        body.UpdatePhysics();
+        body.UpdatePhysics(iterations);
+
     }
 }
 
-void UpdatePhysics(vector<RigidBody> & Bodies , Camera2D & camera)
+vector<Manifold> DetectFrameCollisions(vector<RigidBody> & Bodies)
 {
-    BounceScreen(Bodies , camera);
-    // update movement
-    UpdateBodyPhysics(Bodies);
-
-    // update collisions
+    vector<Manifold> tempManifolds;
     for (int i = 0; i < Bodies.size() - 1; i++)
     {
         RigidBody& bodyA = Bodies[i];
@@ -196,9 +82,11 @@ void UpdatePhysics(vector<RigidBody> & Bodies , Camera2D & camera)
         for (int j = i + 1; j < Bodies.size(); j++)
         {
             RigidBody& bodyB = Bodies[j];
+            if (!IsAABBIntersect(bodyA, bodyB))
+                continue;
 
             Collision::CollisionResult result =
-                Collide(bodyA, bodyB);
+                Collision::Collide(bodyA, bodyB);
 
             if (!result.IsIntersect)
                 continue;
@@ -234,69 +122,105 @@ void UpdatePhysics(vector<RigidBody> & Bodies , Camera2D & camera)
                     (result.Depth * 0.5f)
                 );
             }
-
-            ResolveCollision(
-                bodyA,
-                bodyB,
-                result.NormalCollisionDirection
-            );
+            Manifold manifold = Manifold(bodyA , bodyB , result.Depth 
+                , result.NormalCollisionDirection , {0.0,0.0} , {0.0,0.0} , 0);
+            
+            tempManifolds.push_back(manifold);
         }
     }
-
-
-    // DetectPolygonCollision(Bodies);
-
-    // DetectCircleCollision(Bodies);
-
-    // DetectPolygonCircleCollision(Bodies);
+    return tempManifolds;
 }
 
-void UpdateControls(Camera2D& camera , vector<RigidBody> & Bodies)
+void UpdatePhysics(vector<RigidBody> & Bodies , Camera2D & camera , int iterations)
+{
+    iterations = clamp(iterations , constants::MinSteps , constants::MaxSteps);
+
+    contactPoints.clear();
+
+    for (int it = 0 ; it < iterations ; it++)
+    {
+        // BounceScreen(Bodies , camera);
+
+        UpdateBodyPhysics(Bodies , iterations);
+
+        manifolds.clear();
+
+        manifolds = DetectFrameCollisions(Bodies); 
+
+        
+        for(auto & manifold : manifolds)
+        {
+            Collision::FindContactPoints(manifold);
+
+            if (it == iterations - 1)
+            {
+                if (manifold.ContactCount > 0)
+                {
+                    contactPoints.push_back(manifold.ContactPoints[0]);
+                    if (manifold.ContactCount > 1)
+                    {
+                        contactPoints.push_back(manifold.ContactPoints[1]);
+                    }
+                }
+            }
+            
+            ResolveCollision(manifold);
+        }
+    }
+    
+    for (auto & body : Bodies)
+    {
+        body.Force = {0.0,0.0};
+    }
+}
+
+void UpdateControls(Camera2D& camera , vector<RigidBody> & Bodies)  
 {
     float dx = 0.0f;
     float dy = 0.0f;
-    float forceMagnitude = 1800000.0f;
+    float forceMagnitude = 5000000.0f;
     float rotation = constants::pi * 0.8f* GetFrameTime();
     
-    // int bodyIndex = -1;
-    // for (int i = 0 ; i < Bodies.size() ; i++)
-    // {
-    //     if (Bodies[i].IsStatic)
-    //         continue;
-    //     else
-    //     {
-    //         bodyIndex = i;
-    //         break;
-    //     }
-    // }
+    static int bodyIndex = 0;
+    for (int i = 0 ; i < Bodies.size() ; i++)
+    {
+        if (Bodies[i].IsStatic)
+            continue;
+        else
+        {
+            bodyIndex = i;
+            break;
+        }
+    }
 
     if (IsKeyDown(KEY_RIGHT))
     {
-        dx += 2;
+        dx ++;
     }
 
     if (IsKeyDown(KEY_LEFT))
     {
-        dx -= 2;
+        dx --;
     }
 
     if (IsKeyDown(KEY_UP))
     {
-        dy -= 2;
+        dy --;
     }
 
     if (IsKeyDown(KEY_DOWN))
     {
-        dy += 2;
+        dy ++;
     }
-    // if (dx != 0 || dy != 0)
-    // {
-    //     Vec2 input = {dx , dy};
-    //     Vec2 forceDirection = input.Normalize();
-    //     Vec2 force = forceDirection * forceMagnitude;
+    if (dx != 0 || dy != 0)
+    {
+        Vec2 input = {dx , dy};
+        Vec2 forceDirection = input.Normalize();
+        Vec2 force = forceDirection * forceMagnitude;
 
-    //     Bodies[bodyIndex].AddForce(force);
-    // }
+        Bodies[bodyIndex].AddForce(force);
+        Bodies[bodyIndex].BodyColor = BLUE;
+    }
 
     if (IsKeyPressed(KEY_X))
     {
@@ -309,14 +233,14 @@ void UpdateControls(Camera2D& camera , vector<RigidBody> & Bodies)
     }
     camera.zoom = clamp(camera.zoom, 0.1f, 10.0f);
 
-    // if (IsKeyDown(KEY_A))
-    // {
-    //     Bodies[bodyIndex].RotateBy(-rotation);
-    // }
-    // if (IsKeyDown(KEY_D))
-    // {
-    //     Bodies[bodyIndex].RotateBy(rotation);
-    // }
+    if (IsKeyDown(KEY_A))
+    {
+        Bodies[bodyIndex].RotateBy(-rotation);
+    }
+    if (IsKeyDown(KEY_D))
+    {
+        Bodies[bodyIndex].RotateBy(rotation);
+    }
 
     
 
@@ -341,7 +265,6 @@ void UpdateControls(Camera2D& camera , vector<RigidBody> & Bodies)
         RigidBody body = RigidBody::CreateCircle(clickPos , 1.0f , 0.2f , false , radius);
         Bodies.push_back(body);
     }
-    
 }
 
 void DrawBodies(vector<RigidBody>& Bodies)
@@ -383,6 +306,45 @@ void DrawBodies(vector<RigidBody>& Bodies)
             }           
         }
     }
+    for (auto & point : contactPoints)
+    {
+        DrawRectangle(point.X - 5 , point.Y - 5 , 10 , 10 , YELLOW);
+    }
+    
+        DrawText(
+            TextFormat("Bodies: %d | Manifolds: %d | contact points: %d ", 
+                (int)Bodies.size() , (int)manifolds.size() , (int)contactPoints.size() ),   
+            20,
+            20,
+            20,
+            WHITE
+        );
+}
+
+void RemoveOffScreen(vector<RigidBody>& Bodies , Camera2D & camera)
+{
+    Vector2 rayCamMin = GetScreenToWorld2D({0, 0}, camera);
+    Vector2 rayCamMax = GetScreenToWorld2D(
+    {
+        (float)GetScreenWidth(),
+        (float)GetScreenHeight()
+    }, camera);
+
+    Vec2 camMin(rayCamMin.x, rayCamMin.y);
+    Vec2 camMax(rayCamMax.x, rayCamMax.y);
+
+    for (int i = Bodies.size() - 1; i >= 0; --i)
+{
+    AABB aabb = Bodies[i].GetAABB();
+
+    if (aabb.Min.X > camMax.X ||
+        aabb.Max.X < camMin.X ||
+        aabb.Min.Y > camMax.Y ||
+        aabb.Max.Y < camMin.Y)
+    {
+        Bodies.erase(Bodies.begin() + i);
+    }
+}
 }
 
 vector<RigidBody> MakeBodies(int num)
@@ -557,19 +519,11 @@ int main()
 
     while(!WindowShouldClose())
     {
-        static float timer = 0.0f;
-
-        timer += GetFrameTime();
-
-        if (timer >= 0.5f)
-        {
-            cout << Bodies[1].LinearVelocity.Y << endl;
-            timer -= 0.5f;
-        }
-
         UpdateControls(camera , Bodies);
 
-        UpdatePhysics(Bodies , camera);
+        UpdatePhysics(Bodies, camera, 20);
+
+        RemoveOffScreen(Bodies , camera);
 
         BeginDrawing();
 

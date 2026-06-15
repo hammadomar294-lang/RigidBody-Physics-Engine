@@ -15,6 +15,9 @@ public:
     static constexpr float MinMass = 1.0f; //g
     static constexpr float MaxMass = 1000.0 * 10000.0f; 
 
+    static constexpr int MinSteps = 1;
+    static constexpr int MaxSteps = 64;
+
     static constexpr float pi = 3.14159265359f;
     inline static Vec2 gravity = {0.0f ,500.0f};
 };

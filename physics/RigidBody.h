@@ -7,10 +7,10 @@
 #include <vector>
 #include <iostream>
 
+#include "AABB.h"
 #include "../math/math.h"
 #include "../math/vector2.h"
 #include "../math/transform.h"
-
 #include "constants.h"
 
 using namespace std;
@@ -19,10 +19,9 @@ enum ShapeType
 {
     Circle = 0 , Box = 1
 };
-
 class RigidBody
 {
-    public:
+public:
     Vec2 Position;
     // Velocity Rotation RotationVelocity will be set to 0 cus we want them to be created in one state to velocity and no rotation
     Vec2 LinearVelocity;
@@ -30,6 +29,7 @@ class RigidBody
     float RotationVelocity;
 
     Vec2 Force;
+
     float Mass;
     float InvMass;
     float Density;
@@ -46,25 +46,23 @@ class RigidBody
 
     Color BodyColor;
     
-
+    RigidBody(const Vec2 & position , float mass , float density , float restitution , float area ,
+                              bool isStatic , ShapeType shapetype , Color color , float radius =1, float width =1, float height =1);
+    
     static RigidBody CreateCircle(const Vec2 & position , float density , float restitution , bool isStatic , float radius =1);
 
     static RigidBody CreateBox(const Vec2 & position , float density , float restitution , bool isStatic , float width, float height);
-
-    
 
     void MoveBy(Vec2 amount);
     void MoveTo(Vec2 position);
     void RotateBy(float amount);
 
-    void UpdatePhysics();
+    void UpdatePhysics(int iterations);
 
     void AddForce(const Vec2 &amount);
     void ApplyImpulse(const Vec2 &impulse);
 
-    RigidBody(const Vec2 & position , float mass , float density , float restitution , float area ,
-                              bool isStatic , ShapeType shapetype , Color color , float radius =1, float width =1, float height =1);
-    
+   
     vector<Vec2> Vertices;
     vector<Vec2> TransformedVertices;
     vector<int> Triangles; // holds the indices which means this vertex is number 1 in Arrangement of the vertices
@@ -74,6 +72,11 @@ class RigidBody
     vector<Vec2> GetTransformedVertices();
     bool VerticesNeedsUpdate;
     static vector<int> TriangulateBox();
+
+    AABB aabb;
+    bool AABBNeedUpdate;
+
+    AABB GetAABB();
 
 };
 

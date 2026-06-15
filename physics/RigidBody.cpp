@@ -32,6 +32,9 @@ RigidBody::RigidBody(const Vec2 & position , float mass , float density , float 
         this->Triangles = TriangulateBox();
         this->VerticesNeedsUpdate = true;
     }
+    AABBNeedUpdate = true;
+    this->aabb = GetAABB();
+
     
 }
 
@@ -62,6 +65,36 @@ vector<int> RigidBody::TriangulateBox() // we start from top left and clockwise
     triangleIndices[4] = 2;
     triangleIndices[5] = 3;
     return triangleIndices;
+}
+
+AABB RigidBody::GetAABB()
+{
+    float minX = numeric_limits<float>::max();
+    float minY = numeric_limits<float>::max();
+    float maxX = numeric_limits<float>::lowest();
+    float maxY = numeric_limits<float>::lowest();
+
+    if (shapeType == ShapeType::Circle)
+    {
+        minX = Position.X - Radius;
+        minY = Position.Y - Radius;
+        maxX = Position.X + Radius;
+        maxY = Position.Y + Radius;
+    }
+    else
+    {
+        vector<Vec2> tempVertices = GetTransformedVertices();
+        for (const auto & vertex : tempVertices)
+        {
+            if (vertex.X < minX) minX = vertex.X;
+            if (vertex.X > maxX) maxX = vertex.X;
+            if (vertex.Y < minY) minY = vertex.Y;
+            if (vertex.Y > maxY) maxY = vertex.Y;
+        }
+    }
+
+    AABBNeedUpdate = false;
+    return AABB(minX , minY , maxX , maxY);
 }
 
 RigidBody RigidBody::CreateCircle(const Vec2 & position , float density , float restitution , bool isStatic , float radius )
@@ -118,44 +151,52 @@ void RigidBody::MoveBy(Vec2 amount)
 {
    Position = Position + amount;
    VerticesNeedsUpdate = true;
+   AABBNeedUpdate = true;
 }
 
 void RigidBody::MoveTo(Vec2 position)
 {
     Position = position;
     VerticesNeedsUpdate = true; 
+    AABBNeedUpdate = true;
 }
 
 void RigidBody::RotateBy(float amount)
 {
     Rotation += amount;
     VerticesNeedsUpdate = true; 
+    AABBNeedUpdate = true;
 }
 
-void RigidBody::UpdatePhysics()
+void RigidBody::UpdatePhysics(int iterations)
 {
     if (shapeType == ShapeType::Box)
     {
         VerticesNeedsUpdate = true;
+        AABBNeedUpdate = true;
     }
-    if (!this->IsStatic)
+    if (!IsStatic)
     {
-        Vec2 acceleration = constants::gravity;
-        LinearVelocity += acceleration * GetFrameTime();
+        // Vec2 accelerationGravity = constants::gravity ;
+        // Vec2 accelerationForce = Force * InvMass;
 
-        Position += LinearVelocity * GetFrameTime();
+        // LinearVelocity += (accelerationGravity * GetFrameTime() / iterations) + (accelerationForce * GetFrameTime());
 
-        Rotation += RotationVelocity * GetFrameTime();
+        Vec2 acceleration = constants::gravity + Force * InvMass;
 
-        Force = {0.0f , 0.0f};
+        LinearVelocity += acceleration * GetFrameTime() / iterations;
+
+        Position += LinearVelocity * GetFrameTime() / iterations;
+
+        Rotation += RotationVelocity * GetFrameTime() / iterations;
     }
-    
 }
 
 void RigidBody::AddForce(const Vec2 &amount)
 {
     Force += amount;
 }
+
 void RigidBody::ApplyImpulse(const Vec2 &impulse)
 {
     LinearVelocity += impulse * InvMass; 
