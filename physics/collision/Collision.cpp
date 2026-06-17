@@ -218,6 +218,7 @@ Collision::CollisionResult Collision::Collide(RigidBody &bodyA, RigidBody &bodyB
     return result;
 }
 
+
 void Collision::FindContactPoints(Manifold &manifold)
 {
     ShapeType typeA = manifold.BodyA.shapeType;
@@ -227,7 +228,7 @@ void Collision::FindContactPoints(Manifold &manifold)
     {
         if (typeB == ShapeType::Box)
         {
-
+            FindPolygonPolygonContact(manifold);
         }
         else if (typeB == ShapeType::Circle)
         {
@@ -246,6 +247,7 @@ void Collision::FindContactPoints(Manifold &manifold)
         }
     }
 }
+
 
 Collision::PointSegmentResult Collision::FindPointSegmentResult(const Vec2 & c , const Vec2 &pointA, const Vec2 &pointB)
 {
@@ -312,6 +314,75 @@ void Collision::FindCirclePolygonContact(Manifold &manifold)
     }
     manifold.ContactPoints[0] = result.ClosestPoint;
     manifold.ContactCount = 1;
+}
+
+void Collision::FindPolygonPolygonContact(Manifold &manifold)
+{
+    manifold.ContactPoints[0] = {0.0,0.0};
+    manifold.ContactPoints[1] = {0.0,0.0};
+
+    float minDistance = numeric_limits<float>::max();
+
+    vector<Vec2> verticesA = manifold.BodyA.TransformedVertices;
+    vector<Vec2> verticesB = manifold.BodyB.TransformedVertices;
+
+    // first nested loop
+    for (int i = 0 ; i < verticesA.size() ; i++)
+    {
+        Vec2 p = verticesA[i];
+        for (int j = 0 ; j < verticesB.size() ; j++)
+        {
+            Vec2 va = verticesB[j];
+            Vec2 vb = verticesB[(j + 1) % verticesB.size()];
+
+            Collision::PointSegmentResult Tempresult = FindPointSegmentResult(p , va , vb);
+
+            if (math::NearlyEqual(Tempresult.Distance , minDistance))
+            {
+                // 
+                if (!math::NearlyEqual(Tempresult.ClosestPoint , manifold.ContactPoints[0]))
+                {
+                    manifold.ContactPoints[1] = Tempresult.ClosestPoint;
+                    manifold.ContactCount = 2;
+                    minDistance = Tempresult.Distance;
+                }
+            }
+            else if (Tempresult.Distance < minDistance)
+            {
+                manifold.ContactPoints[0] = Tempresult.ClosestPoint;
+                manifold.ContactCount = 1;
+                minDistance = Tempresult.Distance;
+            }
+        }
+    }
+    // second nested loop
+    for (int i = 0 ; i < verticesB.size() ; i++)
+    {
+        Vec2 p = verticesB[i];
+        for (int j = 0 ; j < verticesB.size() ; j++)
+        {
+            Vec2 va = verticesA[j];
+            Vec2 vb = verticesA[(j + 1) % verticesA.size()];
+
+            Collision::PointSegmentResult Tempresult = FindPointSegmentResult(p , va , vb);
+
+            if (math::NearlyEqual(Tempresult.Distance , minDistance))
+            {
+                if (!math::NearlyEqual(Tempresult.ClosestPoint , manifold.ContactPoints[0]))
+                {
+                    manifold.ContactPoints[1] = Tempresult.ClosestPoint;
+                    manifold.ContactCount = 2;
+                    minDistance = Tempresult.Distance;
+                }
+            }
+            else if (Tempresult.Distance < minDistance)
+            {
+                manifold.ContactPoints[0] = Tempresult.ClosestPoint;
+                manifold.ContactCount = 1;
+                minDistance = Tempresult.Distance;
+            }
+        }
+    }
 }
 
 #pragma region helpers

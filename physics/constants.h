@@ -20,6 +20,7 @@ public:
 
     static constexpr float pi = 3.14159265359f;
     inline static Vec2 gravity = {0.0f ,500.0f};
+    static constexpr float Physics_dt = 1.0f / 60.0f; 
 };
 
 #endif

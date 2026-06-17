@@ -3,6 +3,7 @@ app:
 	math/*.cpp \
 	$(shell find physics -name "*.cpp" ! -name "world.cpp") \
 	-std=c++17 \
+	-O3 \
 	-I/usr/local/include \
 	-L/usr/local/lib \
 	-lraylib \

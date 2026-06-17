@@ -19,6 +19,25 @@ vector <Manifold> manifolds;
 vector <RigidBody> Bodies;
 vector <Vec2> contactPoints;
 
+double TotalTimeToUpdatePhysics = 0.0;
+int TotalStep = 0;
+double averagePhysicsTime = 0.0;
+double timer = 0.0;
+
+int totalPairs = 0;
+int aabbRejected = 0;
+int SATCalls = 0;
+
+int totalPairsAccum =0;
+int aabbRejectedAccum = 0;
+int satCallsAccum = 0;
+
+int averagePairs = 0;
+int averageRejected = 0;
+int averageSATCalls = 0;
+
+int iterations = 20;
+
 void BounceScreen(vector<RigidBody>& bodies , Camera2D & camera);
 vector<RigidBody> MakeBodies(int num);
 
@@ -72,6 +91,24 @@ void UpdateBodyPhysics(vector<RigidBody> & Bodies , int iterations)
     }
 }
 
+void SeparateBodies(RigidBody & bodyA, RigidBody & bodyB , Vec2 MTV)
+{
+    if (bodyA.IsStatic)
+    {
+        bodyB.MoveBy(MTV);
+    }
+    else if (bodyB.IsStatic)
+    {
+        bodyA.MoveBy(MTV * -1);
+    }
+    else
+    {
+        bodyA.MoveBy(MTV * -0.5);
+
+        bodyB.MoveBy(MTV * 0.5);
+    }
+}
+
 vector<Manifold> DetectFrameCollisions(vector<RigidBody> & Bodies)
 {
     vector<Manifold> tempManifolds;
@@ -81,47 +118,27 @@ vector<Manifold> DetectFrameCollisions(vector<RigidBody> & Bodies)
 
         for (int j = i + 1; j < Bodies.size(); j++)
         {
+             totalPairs++;
             RigidBody& bodyB = Bodies[j];
-            if (!IsAABBIntersect(bodyA, bodyB))
-                continue;
-
-            Collision::CollisionResult result =
-                Collision::Collide(bodyA, bodyB);
-
-            if (!result.IsIntersect)
-                continue;
 
             if (bodyA.IsStatic && bodyB.IsStatic)
             {
                 continue;
             }
 
-            if (bodyA.IsStatic)
+            if (!IsAABBIntersect(bodyA, bodyB))
             {
-                bodyB.MoveBy(
-                    result.NormalCollisionDirection *
-                    result.Depth
-                );
+                aabbRejected++;
+                continue;
             }
-            else if (bodyB.IsStatic)
-            {
-                bodyA.MoveBy(
-                    result.NormalCollisionDirection *
-                    (-result.Depth)
-                );
-            }
-            else
-            {
-                bodyA.MoveBy(
-                    result.NormalCollisionDirection *
-                    (-result.Depth * 0.5f)
-                );
 
-                bodyB.MoveBy(
-                    result.NormalCollisionDirection *
-                    (result.Depth * 0.5f)
-                );
-            }
+            SATCalls++;
+
+            Collision::CollisionResult result = Collision::Collide(bodyA, bodyB);
+
+            if (!result.IsIntersect)
+                continue;
+
             Manifold manifold = Manifold(bodyA , bodyB , result.Depth 
                 , result.NormalCollisionDirection , {0.0,0.0} , {0.0,0.0} , 0);
             
@@ -131,47 +148,44 @@ vector<Manifold> DetectFrameCollisions(vector<RigidBody> & Bodies)
     return tempManifolds;
 }
 
-void UpdatePhysics(vector<RigidBody> & Bodies , Camera2D & camera , int iterations)
+void BroadPhase(vector<RigidBody> & Bodies)
 {
-    iterations = clamp(iterations , constants::MinSteps , constants::MaxSteps);
+    manifolds.clear();
+    manifolds = DetectFrameCollisions(Bodies); 
+}
 
-    contactPoints.clear();
-
-    for (int it = 0 ; it < iterations ; it++)
+void NarrowPhase(vector <Manifold> & manifolds) 
+{
+    for(auto & manifold : manifolds)
     {
-        // BounceScreen(Bodies , camera);
+        Vec2 MTV = manifold.Normal * manifold.Depth;
+        SeparateBodies(manifold.BodyA , manifold.BodyB , MTV);
 
-        UpdateBodyPhysics(Bodies , iterations);
-
-        manifolds.clear();
-
-        manifolds = DetectFrameCollisions(Bodies); 
-
-        
-        for(auto & manifold : manifolds)
-        {
-            Collision::FindContactPoints(manifold);
-
-            if (it == iterations - 1)
-            {
-                if (manifold.ContactCount > 0)
-                {
-                    contactPoints.push_back(manifold.ContactPoints[0]);
-                    if (manifold.ContactCount > 1)
-                    {
-                        contactPoints.push_back(manifold.ContactPoints[1]);
-                    }
-                }
-            }
-            
-            ResolveCollision(manifold);
-        }
+        Collision::FindContactPoints(manifold);
+        ResolveCollision(manifold);
     }
-    
+}
+
+void SetForcesToZero(vector<RigidBody> & Bodies)
+{
     for (auto & body : Bodies)
     {
         body.Force = {0.0,0.0};
     }
+}
+
+void UpdatePhysics(vector<RigidBody> & Bodies , Camera2D & camera , int iterations)
+{
+    iterations = clamp(iterations , constants::MinSteps , constants::MaxSteps);
+
+    for (int it = 0 ; it < iterations ; it++)
+    {
+
+        UpdateBodyPhysics(Bodies , iterations);
+        BroadPhase(Bodies);
+        NarrowPhase(manifolds);
+    }
+    SetForcesToZero(Bodies);
 }
 
 void UpdateControls(Camera2D& camera , vector<RigidBody> & Bodies)  
@@ -179,7 +193,7 @@ void UpdateControls(Camera2D& camera , vector<RigidBody> & Bodies)
     float dx = 0.0f;
     float dy = 0.0f;
     float forceMagnitude = 5000000.0f;
-    float rotation = constants::pi * 0.8f* GetFrameTime();
+    float rotation = constants::pi * 0.8f* constants::Physics_dt;
     
     static int bodyIndex = 0;
     for (int i = 0 ; i < Bodies.size() ; i++)
@@ -242,7 +256,14 @@ void UpdateControls(Camera2D& camera , vector<RigidBody> & Bodies)
         Bodies[bodyIndex].RotateBy(rotation);
     }
 
-    
+    if (IsKeyDown(KEY_P))
+    {
+        Bodies[1].RotateBy(rotation);
+    }
+    if (IsKeyDown(KEY_O))
+    {
+        Bodies[1].RotateBy(-rotation);
+    }
 
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
     {
@@ -252,7 +273,8 @@ void UpdateControls(Camera2D& camera , vector<RigidBody> & Bodies)
 
         float width  = 20 + rand() % 80;
         float height = 20 + rand() % 80;
-        RigidBody body = RigidBody::CreateBox(clickPos , 1.0f , 0.2f , false , width , height);
+        float restitution = 0.2f + ((float)rand() / RAND_MAX) * (0.8f);
+        RigidBody body = RigidBody::CreateBox(clickPos , 1.0f ,restitution , false , width , height);
         Bodies.push_back(body);
     }
     if(IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
@@ -261,8 +283,9 @@ void UpdateControls(Camera2D& camera , vector<RigidBody> & Bodies)
         Vector2 mouseWorld = GetScreenToWorld2D(mouseScreen, camera);
         Vec2 clickPos(mouseWorld.x, mouseWorld.y);
 
+        float restitution = 0.2f + ((float)rand() / RAND_MAX) * (0.8f);
         float radius = 10 + rand() % 40;
-        RigidBody body = RigidBody::CreateCircle(clickPos , 1.0f , 0.2f , false , radius);
+        RigidBody body = RigidBody::CreateCircle(clickPos , 1.0f ,restitution , false , radius);
         Bodies.push_back(body);
     }
 }
@@ -306,14 +329,10 @@ void DrawBodies(vector<RigidBody>& Bodies)
             }           
         }
     }
-    for (auto & point : contactPoints)
-    {
-        DrawRectangle(point.X - 5 , point.Y - 5 , 10 , 10 , YELLOW);
-    }
-    
         DrawText(
-            TextFormat("Bodies: %d | Manifolds: %d | contact points: %d ", 
-                (int)Bodies.size() , (int)manifolds.size() , (int)contactPoints.size() ),   
+            TextFormat("Bodies: %d | contact points: %d | total pairs: %d | aabb rejected: %d | SAT calls: %d | Step time: %.2f ms", 
+                (int)Bodies.size() , (int)contactPoints.size() , (int)averagePairs , (int)averageRejected
+                 , (int)averageSATCalls ,averagePhysicsTime ),   
             20,
             20,
             20,
@@ -486,15 +505,38 @@ vector<RigidBody> InitializeWorld()
     RigidBody ground = RigidBody::CreateBox(
         {640.0f, 700.0f}, 
         1.0f,             
-        1.0f,             
+        0.5f,             
         true,             
         1280.0f,          
         40.0f             
     );
 
     ground.BodyColor = GREEN;
-
     bodies.push_back(ground);
+
+    // RigidBody slope1 = RigidBody::CreateBox(
+    //     {240.0f, 350.0f}, 
+    //     1.0f,             
+    //     0.5f,             
+    //     true,             
+    //     400.0f,          
+    //     40.0f             
+    // );
+
+    // slope1.RotateBy(constants::pi * 0.325);
+    // bodies.push_back(slope1);
+
+    // RigidBody slope2 = RigidBody::CreateBox(
+    //     {550.0f, 250.0f}, 
+    //     1.0f,             
+    //     0.5f,             
+    //     true,             
+    //     400.0f,          
+    //     40.0f             
+    // );
+
+    // slope2.RotateBy(-constants::pi * 0.325);
+    // bodies.push_back(slope2);
 
     return bodies;
 }
@@ -521,7 +563,41 @@ int main()
     {
         UpdateControls(camera , Bodies);
 
-        UpdatePhysics(Bodies, camera, 20);
+        auto start = std::chrono::high_resolution_clock::now();
+        UpdatePhysics(Bodies, camera, iterations);
+        auto end = std::chrono::high_resolution_clock::now();
+
+        double physicsStep = std::chrono::duration<double, std::milli>(end - start).count();
+        TotalTimeToUpdatePhysics += physicsStep;
+        TotalStep++;
+        timer += constants::Physics_dt;
+
+        totalPairsAccum += totalPairs;
+        aabbRejectedAccum += aabbRejected;
+        satCallsAccum += SATCalls;
+
+        totalPairs = 0;
+        aabbRejected = 0;
+        SATCalls = 0;
+
+        if (timer >= 1)
+        {
+            timer = 0.0;
+
+            averagePhysicsTime = TotalTimeToUpdatePhysics / TotalStep;
+            TotalTimeToUpdatePhysics = 0.0;
+            
+            averagePairs = totalPairsAccum / TotalStep / iterations;
+            averageRejected = aabbRejectedAccum / TotalStep / iterations;
+            averageSATCalls = satCallsAccum / TotalStep / iterations;
+
+            totalPairsAccum = 0;
+            aabbRejectedAccum = 0;
+            satCallsAccum = 0;
+
+            TotalStep = 0;
+        }
+
 
         RemoveOffScreen(Bodies , camera);
 

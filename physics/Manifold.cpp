@@ -1,5 +1,7 @@
 #include "Manifold.h"
 
+
+
 Manifold::Manifold(RigidBody & bodyA , RigidBody & bodyB , 
         float depth ,const Vec2 & normal ,const Vec2 & contact1 
         ,const Vec2 & contact2 , int contactCount)

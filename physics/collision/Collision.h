@@ -27,8 +27,8 @@ public:
 
     struct PointSegmentResult
     {
-        Vec2 ClosestPoint;
-        float Distance;
+        Vec2 ClosestPoint = {0.0,0.0};
+        float Distance = numeric_limits<float>::max();
     };
 
     static CollisionResult IsIntersectCircle(const Vec2 & circleA , float radiusA , const Vec2 & circleB , float radiusB);

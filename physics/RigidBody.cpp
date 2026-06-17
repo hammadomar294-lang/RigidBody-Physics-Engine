@@ -11,11 +11,6 @@ RigidBody::RigidBody(const Vec2 & position , float mass , float density , float 
     this->Restitution = restitution;
     this->IsStatic = isStatic;
 
-    if (!this->IsStatic)
-        this->InvMass = 1.0/mass;
-    else
-        this->InvMass = 0.0;
-
     this->Area = area;
     this->Radius = radius;
     this->Width = width;
@@ -31,11 +26,28 @@ RigidBody::RigidBody(const Vec2 & position , float mass , float density , float 
         this->Vertices = MakeBoxVertices(width , height);
         this->Triangles = TriangulateBox();
         this->VerticesNeedsUpdate = true;
+        this->Inertia = (1.0f / 12.0f) * mass * (height * height + width * width);
     }
+    else if (shapeType == ShapeType::Circle)
+    {
+        
+        this->Inertia = 0.5f * mass * radius * radius;
+    }
+
+    if (!this->IsStatic)
+    {
+        this->InvMass = 1.0/mass;
+        this->InvInertia = 1.0/Inertia;
+    }
+        
+    else
+    {
+        this->InvMass = 0.0;
+        this->InvInertia = 0.0;
+    }
+    
     AABBNeedUpdate = true;
     this->aabb = GetAABB();
-
-    
 }
 
 vector<Vec2> RigidBody::MakeBoxVertices(float width, float height)
@@ -99,7 +111,12 @@ AABB RigidBody::GetAABB()
 
 RigidBody RigidBody::CreateCircle(const Vec2 & position , float density , float restitution , bool isStatic , float radius )
 {
-    Color color = GRAY;
+    Color color = {
+    (unsigned char)(rand() % 256), 
+    (unsigned char)(rand() % 256), 
+    (unsigned char)(rand() % 256), 
+    255                            
+};
     
     density = clamp(density , constants::MinDensity , constants::MaxDensity);
     restitution = clamp(restitution , 0.0f , 1.0f);
@@ -114,7 +131,12 @@ RigidBody RigidBody::CreateCircle(const Vec2 & position , float density , float 
 
 RigidBody RigidBody::CreateBox(const Vec2 &position, float density, float restitution, bool isStatic ,float width, float height)
 {
-    Color color = GRAY;
+    Color color = {
+    (unsigned char)(rand() % 256), 
+    (unsigned char)(rand() % 256), 
+    (unsigned char)(rand() % 256), 
+    255                            
+};
 
     density = clamp(density , constants::MinDensity , constants::MaxDensity);
     restitution = clamp(restitution , 0.0f , 1.0f);
@@ -180,24 +202,19 @@ void RigidBody::UpdatePhysics(int iterations)
         // Vec2 accelerationGravity = constants::gravity ;
         // Vec2 accelerationForce = Force * InvMass;
 
-        // LinearVelocity += (accelerationGravity * GetFrameTime() / iterations) + (accelerationForce * GetFrameTime());
+        // LinearVelocity += (accelerationGravity * constants::Physics_dt() / iterations) + (accelerationForce * constants::Physics_dt());
+        // 
+        Vec2 acceleration = constants::gravity +  Force * InvMass;
 
-        Vec2 acceleration = constants::gravity + Force * InvMass;
+        LinearVelocity += acceleration * constants::Physics_dt / iterations;
 
-        LinearVelocity += acceleration * GetFrameTime() / iterations;
+        Position += LinearVelocity * constants::Physics_dt / iterations;
 
-        Position += LinearVelocity * GetFrameTime() / iterations;
-
-        Rotation += RotationVelocity * GetFrameTime() / iterations;
+        Rotation += RotationVelocity * constants::Physics_dt / iterations;
     }
 }
 
 void RigidBody::AddForce(const Vec2 &amount)
 {
     Force += amount;
-}
-
-void RigidBody::ApplyImpulse(const Vec2 &impulse)
-{
-    LinearVelocity += impulse * InvMass; 
 }

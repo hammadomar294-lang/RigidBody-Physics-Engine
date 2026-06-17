@@ -41,6 +41,9 @@ public:
     float Radius;
     float Width;
     float Height;
+
+    float Inertia;
+    float InvInertia;
     
     ShapeType shapeType;
 
