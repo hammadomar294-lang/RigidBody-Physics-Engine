@@ -1,77 +1,183 @@
-Physics Engine Project
+# 2D Physics Engine
 
-A personal long-term project focused on building a modular 2D physics engine in C++ from the ground up. The goal is not only to learn graphics programming, but also to understand the mathematics, simulation techniques, architecture, and systems design behind game engines and interactive simulations.
+A personal long-term project focused on building a modular 2D physics engine entirely from scratch in **C++**.
 
-Philosophy
+The purpose of this project is to understand the mathematics, simulation techniques, engine architecture, and software engineering principles behind modern physics engines rather than relying on existing physics libraries.
 
-Rather than relying on existing engines, this project aims to gradually build the core systems from scratch while keeping the code modular and reusable. The engine is intended to serve both as a learning platform and as a foundation for future projects.
+> **This project was built completely from scratch.**
+> No external physics engine (such as Box2D or Chipmunk2D) is used.
 
-Current Goals
+---
 
-Learn practical vector mathematics
+## Features
 
-Implement rigid body simulation
+### Physics
 
-Build collision detection and response systems
+- Circle vs Circle Collision Detection
+- Circle vs Box Collision Detection
+- Box vs Box Collision Detection
+- Impulse-based Collision Resolution
+- Position Correction
+- Linear & Angular Velocity
+- Rotation
+- Gravity
+- Friction
+- Sleeping System
 
-Understand engine architecture and data flow
+### Constraints
 
-Develop reusable systems that can support multiple projects
+- Distance Joints
+- Springs
+- Rope Constraints
+- Pendulum Simulation
 
-Roadmap
+### Demonstrations
 
-Phase 1 — Physics Simulation Engine (Current Phase)
+- Projectile Motion
+- Spring Motion
+- Rope Simulation
+- Pendulum Simulation
+- Tower Destruction
+- Mouse Drag Interaction
+- Physics-based Projectile Shooting
 
-Build the core engine systems required to run physics experiments and simulations.
+### Optimization
 
-Target demonstrations:
+- Broad Phase Spatial Grid
+- Narrow Phase Collision Detection
 
-Projectile Motion
+---
 
-Spring Motion
+## Controls
 
-Pendulum Simulation
+| Input | Action |
+|-------|--------|
+| Left Mouse | Drag bodies |
+| Right Mouse | Spawn random body |
+| Shoot Mode | Launch projectile |
+| Mouse | Aim projectile |
 
-Gravity Experiments
+---
 
-Phase 2 — Interactive Physics Sandbox
+## Project Structure
 
-Expand the engine into an interactive simulation environment similar in spirit to physics sandbox applications.
+```
+math/
+    Vector mathematics
+    Utility math functions
+
+physics/
+    Bodies
+    Collision Detection
+    Collision Resolution
+    Joints
+    Springs
+    Sleeping
+    Broad Phase
+
+UI/
+    RayGui (future)
+
+tester.cpp
+    Sandbox application
+```
+
+---
+
+## Dependencies
+
+- C++17
+- Raylib
+- RayGui *(planned for future sandbox UI)*
+
+---
+
+## Build
+
+Compile:
+
+```bash
+make app
+```
+
+Run:
+
+```bash
+make run
+```
+
+Clean:
+
+```bash
+make clean
+```
+
+---
+
+## Philosophy
+
+The objective of this project is not simply to recreate an existing physics engine, but to learn how one is designed and implemented from first principles.
+
+Each major system has been implemented incrementally to understand the underlying algorithms and engineering decisions behind modern game engines.
+
+---
+
+## Roadmap
+
+### ✅ Phase 1 — Physics Engine
+
+Core physics simulation.
+
+Completed:
+
+- Rigid Bodies
+- Collision Detection
+- Collision Resolution
+- Rotation
+- Friction
+- Sleeping
+- Springs
+- Ropes
+- Pendulums
+- Physics Demonstrations
+
+---
+
+### 🔄 Phase 2 — Advanced Physics
 
 Planned features:
 
-User interface system
+- Revolute Joints
+- Motors
+- Vehicle Physics
+- Soft Constraints
+- Ragdolls
+- Continuous Collision Detection (CCD)
 
-Object creation tools
+---
 
-Runtime parameter editing
+### 🎮 Phase 3 — Games
 
-Visualization tools
+Build complete games powered entirely by the engine.
 
-Simulation controls
+Potential projects:
 
-Experiment presets
+- Angry Birds Clone
+- Physics Puzzle Game
+- Bridge Builder
 
-Goal:
+---
 
-Allow users to build and interact with physics simulations without modifying code.
+## Screenshots
 
-Phase 3 — Game Development
+*(Add screenshots or GIFs here)*
 
-Use the engine as a foundation for creating original games.
+---
 
-Goal:
+## Repository Status
 
-Create complete games powered entirely by the engine developed in previous phases.
+**Version:** v1.0
 
-Technologies
+**Status:** Phase 1 Complete
 
-C++
-
-Raylib library
-
-Custom Mathematics Library
-
-Custom Physics Systems
-
-Project status: Phase 1 — In Progress
+This repository will continue evolving as new engine features are implemented in future phases.
