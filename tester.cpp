@@ -7,7 +7,11 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#define RAYGUI_IMPLEMENTATION
+#include "UI/raygui/src/raygui.h"
+
 #include "raylib.h"
+
 
 #include "physics/RigidBody.h"
 #include "math/math.h"
@@ -18,6 +22,27 @@
 #include "physics/Joint.h"
 
 using namespace std;
+
+enum class UIScreen
+{
+    MainMenu,
+    Tower,
+    Springs,
+    Pendulum,
+    DragTest
+};
+
+UIScreen CurrentScreen = UIScreen::MainMenu;
+
+enum class Control
+{
+    Drag,
+    Shooting,
+    Pendulums,
+    Springs
+};
+
+Control currentControl = Control::Drag;
 
 void MakePendulum(int numOfBalls , float length , Camera2D & camera);
 void BounceScreen(vector<RigidBody>& bodies , Camera2D & camera);
@@ -129,98 +154,6 @@ bool IsAABBIntersect(RigidBody* bodyA , RigidBody* bodyB)
              a.Min.Y > b.Max.Y);
 }
 
-void ResolveCollisionBasic(const Manifold & manifold)
-{
-    RigidBody * bodyA = manifold.BodyA; 
-    RigidBody * bodyB = manifold.BodyB; 
-    Vec2 normal = manifold.Normal;
-
-    Vec2 relativeVelocity = bodyB->LinearVelocity - bodyA->LinearVelocity;
-
-    if (math::Dot(normal , relativeVelocity) > 0.0)
-        return;
-
-    float minRestitution = min(bodyA->Restitution , bodyB->Restitution);
-    // impulse = -(1 + minRestitution) * Dot(relativeVelocity , nomal) / 1/massA + 1/massB
-    float impulse = -(1 + minRestitution) * math::Dot(relativeVelocity , normal) / (bodyA->InvMass + bodyB->InvMass);
-
-    bodyA->LinearVelocity += normal * (-impulse * bodyA->InvMass);
-    bodyB->LinearVelocity += normal * (impulse * bodyB->InvMass);
-}
-
-void ResolveCollisionRotation(const Manifold & manifold)
-{
-    RigidBody * bodyA = manifold.BodyA; 
-    RigidBody * bodyB = manifold.BodyB;
-    
-    Vec2 normal = manifold.Normal;
-    
-    Vec2 contactArray[2] = {manifold.ContactPoints[0] , manifold.ContactPoints[1]};
-    int contactCount = manifold.ContactCount;
-
-    Vec2 bodyA_levers[2];
-    Vec2 bodyB_levers[2];
-
-    Vec2 impulseArray[2];
-    Vec2 impulseFrictionArray[2];
-
-    Vec2 relativeVelocity = bodyB->LinearVelocity - bodyA->LinearVelocity;
-
-    float minRestitution = min(bodyA->Restitution , bodyB->Restitution);
-
-    for (int i = 0 ; i < contactCount ; i++)
-    {
-        Vec2 leverA = contactArray[i] - bodyA->Position; 
-        bodyA_levers[i] = leverA;
-
-        Vec2 leverB = contactArray[i] - bodyB->Position;
-        bodyB_levers[i] = leverB;
-
-        
-        Vec2 leverA_Perpendicular = {-leverA.Y , leverA.X};
-        Vec2 leverB_Perpendicular = {-leverB.Y , leverB.X};
-        
-        // angular velocity at this instance of time is linear 
-        Vec2 angularLinearVelocity_A = leverA_Perpendicular * bodyA->RotationVelocity;
-        Vec2 angularLinearVelocity_B = leverB_Perpendicular * bodyB->RotationVelocity;
-        
-        // we increment linear velocity by the angular velocity at that instance
-        Vec2 velocityA = bodyA->LinearVelocity + angularLinearVelocity_A;
-        Vec2 velocityB = bodyB->LinearVelocity + angularLinearVelocity_B;
-
-        Vec2 relativeVelocity = velocityB - velocityA;
-
-        float relativeNormalDot = math::Dot(relativeVelocity , normal);
-
-        if (relativeNormalDot > 0.0)
-            continue;
-
-        float leverA_DotNormal = math::Dot(leverA_Perpendicular , normal);
-        float leverB_DotNormal = math::Dot(leverB_Perpendicular , normal);
-
-        float numerator = -(1 + minRestitution) * relativeNormalDot;
-
-        float denominator = (bodyA->InvMass + bodyB->InvMass) + 
-        (leverA_DotNormal * leverA_DotNormal * bodyA->InvInertia) +
-        (leverB_DotNormal * leverB_DotNormal * bodyB->InvInertia);
-
-        Vec2 impulse = normal * (numerator / denominator / contactCount);
-        
-        impulseArray[i] = impulse;
-    }
-
-    for (int i = 0 ; i < contactCount ; i++)
-    {
-        bodyA->LinearVelocity += (impulseArray[i] * -bodyA->InvMass);
-        bodyA->RotationVelocity += math::Cross(bodyA_levers[i] , impulseArray[i]) * -bodyA->InvInertia;
-
-        bodyB->LinearVelocity += (impulseArray[i] * bodyB->InvMass);
-        bodyB->RotationVelocity += math::Cross(bodyB_levers[i] , impulseArray[i]) * bodyB->InvInertia;
-    }
-
-
-}
-
 void ResolveCollisionRotationWithFriction(const Manifold & manifold)
 {
     RigidBody * bodyA = manifold.BodyA; 
@@ -236,6 +169,7 @@ void ResolveCollisionRotationWithFriction(const Manifold & manifold)
 
     Vec2 impulseArray[2] = {};
     Vec2 impulseFrictionArray[2] = {};
+
     float scalerImpulseArray[2] = {};
 
     Vec2 relativeVelocity = bodyB->LinearVelocity - bodyA->LinearVelocity;
@@ -261,7 +195,7 @@ void ResolveCollisionRotationWithFriction(const Manifold & manifold)
         Vec2 angularLinearVelocity_A = leverA_Perpendicular * bodyA->RotationVelocity;
         Vec2 angularLinearVelocity_B = leverB_Perpendicular * bodyB->RotationVelocity;
         
-        // we increment linear velocity by the angular velocity at that instance
+       
         Vec2 velocityA = bodyA->LinearVelocity + angularLinearVelocity_A;
         Vec2 velocityB = bodyB->LinearVelocity + angularLinearVelocity_B;
 
@@ -394,117 +328,6 @@ void SeparateBodies(RigidBody * bodyA, RigidBody * bodyB , Vec2 MTV)
     }
 }
 
-vector<Manifold> DetectFrameCollisionsOld(vector<RigidBody*> & Bodies)
-{
-
-    vector<Manifold> tempManifolds;
-    unordered_set<long long> checkedPairs;
-    for (int i = 0; i < Bodies.size() ; i++)
-    {
-        Cell cell = MakeCell(Bodies[i]->Position);
-        
-        RigidBody* bodyA = Bodies[i];
-
-        for (int x = -1 ; x <= 1 ; x++)
-        {
-            for (int y = -1 ; y <= 1 ; y++)
-            {
-                int cellX = cell.X + x;
-                int cellY = cell.Y + y;
-
-                Cell neighbour(cellX , cellY);
-
-                auto it = Grid.find(CellToString(neighbour));
-                if (it == Grid.end()) 
-                    continue;
-
-                vector <int> & NeighbourBodiesIndices = it->second;
-
-                for (int j = 0 ; j < NeighbourBodiesIndices.size() ; j++)
-                {
-                    int targetIndex = NeighbourBodiesIndices[j];
-                    if (i == targetIndex)
-                        continue;
-
-                    int minId = std::min(i, targetIndex);
-                    int maxId = std::max(i, targetIndex);
-                    long long pairKey = ((long long)minId << 32) | (maxId & 0xFFFFFFFFLL);
-
-                    if (checkedPairs.count(pairKey))
-                        continue;
-
-                    checkedPairs.insert(pairKey);
-
-                    RigidBody* bodyB = Bodies[NeighbourBodiesIndices[j]];
-
-                    inf.totalPairs++;
-
-                    if (bodyA->IsStatic && bodyB->IsStatic)
-                    {
-                        continue;
-                    }
-
-                    if (!IsAABBIntersect(bodyA, bodyB))
-                    {
-                        inf.aabbRejected++;
-                        continue;
-                    }
-
-                    inf.SATCalls++;
-
-                    Collision::CollisionResult result = Collision::Collide(bodyA, bodyB);
-
-                    if (!result.IsIntersect)
-                        continue;
-
-                    Manifold manifold = Manifold(bodyA , bodyB , result.Depth 
-                        , result.NormalCollisionDirection , {0.0,0.0} , {0.0,0.0} , 0);
-                    
-                    tempManifolds.push_back(manifold);
-                }
-            }
-        }
-    }
-
-    return tempManifolds;
-
-    // for (int i = 0; i < Bodies.size() - 1; i++)
-    // {
-    //     RigidBody& bodyA = Bodies[i];
-
-    //     for (int j = i + 1; j < Bodies.size(); j++)
-    //     {
-    //         inf.totalPairs++;
-    //         RigidBody& bodyB = Bodies[j];
-
-    //         if (bodyA.IsStatic && bodyB.IsStatic)
-    //         {
-    //             continue;
-    //         }
-
-    //         if (!IsAABBIntersect(bodyA, bodyB))
-    //         {
-    //             inf.aabbRejected++;
-    //             continue;
-    //         }
-
-    //         inf.SATCalls++;
-
-    //         Collision::CollisionResult result = Collision::Collide(bodyA, bodyB);
-
-    //         if (!result.IsIntersect)
-    //             continue;
-
-    //         Manifold manifold = Manifold(bodyA , bodyB , result.Depth 
-    //             , result.NormalCollisionDirection , {0.0,0.0} , {0.0,0.0} , 0);
-            
-    //         tempManifolds.push_back(manifold);
-    //     }
-    // }
-    // return tempManifolds;
-
-}
-
 
 vector<Manifold> DetectFrameCollisions(vector<RigidBody*> & Bodies)
 {
@@ -585,7 +408,6 @@ vector<Manifold> DetectFrameCollisions(vector<RigidBody*> & Bodies)
 
     return tempManifolds;
 }
-
 
 
 void BroadPhase(vector<RigidBody*> & Bodies)
@@ -744,8 +566,14 @@ void MakeRope(int numOfBalls , const Vec2 & startPos)
     }
 }
 
-void MakeSpring(Vec2 & startPos)
+void MakeSpring(Camera2D & camera)
 {
+
+    Vector2 mouseScreen = GetMousePosition();
+    Vector2 mouseWorldRay = GetScreenToWorld2D(mouseScreen, camera);
+
+    Vec2 mouseWorld(mouseWorldRay.x, mouseWorldRay.y);
+
     RigidBody * previous = nullptr;
 
     float restLength = 200.0 , width = 80.0 , height = 80.0;
@@ -754,14 +582,14 @@ void MakeSpring(Vec2 & startPos)
 
 
     // im making the surface of the ground box is at y = 680 in initializeWorld function 
-    if (startPos.Y >= 640.0)
+    if (mouseWorld.Y >= 640.0)
     {
-        startPos.Y = 679 - height / 2.0;
+        mouseWorld.Y = 679 - height / 2.0;
     }
 
     for (int i = 0 ; i < 2 ; i++)
     {
-        RigidBody * node = new RigidBody(RigidBody::CreateBox(startPos + temp * i, 1.0 , 0.5 , false , width , height));
+        RigidBody * node = new RigidBody(RigidBody::CreateBox(mouseWorld + temp * i, 1.0 , 0.5 , false , width , height));
         if (i == 0)
             node->IsStatic = true;
         Bodies.push_back(node);
@@ -802,31 +630,26 @@ int FindClosestBody(const Vec2 & clickPos)
     return closestIndex;
 }
 
-void UpdateDragControls(Camera2D& camera , vector<RigidBody*> & Bodies) 
+void UpdateDrag(Camera2D& camera , vector<RigidBody*> & Bodies) 
 {
     float forceMagnitude = 5000000.0f;
     static int bodyIndex = -1;
 
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-    {
-        Vector2 mouseScreen = GetMousePosition();
-        Vector2 mouseWorld = GetScreenToWorld2D(mouseScreen, camera);
-
-        Vec2 clickPos(mouseWorld.x, mouseWorld.y);
-
-        int index = FindClosestBody(clickPos);
-        if (index != -1)
-        {
-            bodyIndex = index;
-        }
-
-    }
 
     Vector2 mouseScreen = GetMousePosition();
     Vector2 mouseWorldRay = GetScreenToWorld2D(mouseScreen, camera);
 
     Vec2 mouseWorld(mouseWorldRay.x, mouseWorldRay.y);
 
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+    {
+        int index = FindClosestBody(mouseWorld);
+        if (index != -1)
+        {
+            bodyIndex = index;
+        }
+
+    }
 
     if(IsMouseButtonDown(MOUSE_BUTTON_LEFT))
     {
@@ -868,17 +691,47 @@ void UpdateDragControls(Camera2D& camera , vector<RigidBody*> & Bodies)
         
         bodyIndex = -1;
     }
+    if (IsKeyPressed(KEY_X))
+    {
+        camera.zoom += 0.2f;
+    }
+
+    if (IsKeyPressed(KEY_Z))
+    {
+        camera.zoom -= 0.2f;
+    }
+    camera.zoom = clamp(camera.zoom, 0.1f, 10.0f);
+}
+
+void UpdateDragControls(Camera2D& camera , vector<RigidBody*> & Bodies)
+{
+    Vector2 mouseScreen = GetMousePosition();
+    Vector2 mouseWorldRay = GetScreenToWorld2D(mouseScreen, camera);
+
+    Vec2 mouseWorld(mouseWorldRay.x, mouseWorldRay.y);
+
+    UpdateDrag(camera , Bodies);
 
     if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
     {
-        MakeSpring(mouseWorld);
+        int type = rand() % 2;
+        if (type == 0)
+        {
+            float radius = 10.0f + rand() % 40;
+            RigidBody * body = new RigidBody(RigidBody::CreateCircle(mouseWorld , 1.0 , 0.5 , false , radius));
+            Bodies.push_back(body);
+        }
+        else
+        {
+            float width = 10.0f + rand() % 40;
+            float height = 10.0f + rand() % 40;
+            RigidBody * body = new RigidBody(RigidBody::CreateBox(mouseWorld , 1.0 , 0.5 , false , width , height));
+            Bodies.push_back(body);
+        }
+            
     }
-    if (IsKeyPressed(KEY_P))
-    {
-        MakePendulum(2 , 300.0 , camera);
-    }
-}
 
+}
 
 Vec2 GetShootingDir(Camera2D& camera) 
 {
@@ -913,8 +766,37 @@ void UpdateShootingControls(Camera2D& camera , vector<RigidBody*> & Bodies)
         Bodies.push_back(body);
         speed = 0.0;
     }
+
+    if (IsKeyPressed(KEY_X))
+    {
+        camera.zoom += 0.2f;
+    }
+
+    if (IsKeyPressed(KEY_Z))
+    {
+        camera.zoom -= 0.2f;
+    }
+    camera.zoom = clamp(camera.zoom, 0.1f, 10.0f);
 }
 
+
+void UpdatedPendulumsControls(Camera2D& camera , vector<RigidBody*> & Bodies)
+{
+    UpdateDrag(camera , Bodies);
+    if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
+    {
+        MakePendulum(4 , 150.0 , camera);
+    }
+}
+
+void UpdateSpringControls(Camera2D& camera , vector<RigidBody*> & Bodies)
+{
+    UpdateDrag(camera , Bodies);
+    if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
+    {
+        MakeSpring(camera);
+    }
+}
 
 void MakePendulum(int numOfBalls , float length , Camera2D & camera)
 {
@@ -991,174 +873,6 @@ void MakeTower()
                 1.0f, 0.2f, false,
                 25.0f)));
 }
-
-// void UpdateControls(Camera2D& camera , vector<RigidBody*> & Bodies)  
-// {
-//     float dx = 0.0f;
-//     float dy = 0.0f;
-    
-//     float rotation = constants::pi * 0.8f* constants::Physics_dt;
-    
-    
-    
-//     if (bodyIndex == -1)
-//     {
-//         for (int i = 0 ; i < Bodies.size() ; i++)
-//         {
-            
-//             if (Bodies.size() == 0)
-//                 break;
-//             if (Bodies[i]->IsStatic)
-//                 continue;
-//             else
-//             {
-//                 bodyIndex = i;
-//                 break;
-//             }
-//         }
-//     }
-
-//     if (IsKeyDown(KEY_RIGHT))
-//     {
-//         dx ++;
-//     }
-
-//     if (IsKeyDown(KEY_LEFT))
-//     {
-//         dx --;
-//     }
-
-//     if (IsKeyDown(KEY_UP))
-//     {
-//         dy --;
-//     }
-
-//     if (IsKeyDown(KEY_DOWN))
-//     {
-//         dy ++;
-//     }
-//     if (dx != 0 || dy != 0)
-//     {
-//         Vec2 input = {dx , dy};
-//         Vec2 forceDirection = input.Normalize();
-//         Vec2 force = forceDirection * forceMagnitude;
-//         Bodies[bodyIndex]->IsSleeping = false;
-//         Bodies[bodyIndex]->AddForce(force); 
-//     }
-
-//     if (IsKeyPressed(KEY_X))
-//     {
-//         camera.zoom += 0.2f;
-//     }
-
-//     if (IsKeyPressed(KEY_Z))
-//     {
-//         camera.zoom -= 0.2f;
-//     }
-//     camera.zoom = clamp(camera.zoom, 0.1f, 10.0f);
-
-//     if (IsKeyDown(KEY_A))
-//     {
-//         Bodies[bodyIndex]->RotateBy(-rotation);
-//     }
-//     if (IsKeyDown(KEY_D))
-//     {
-//         Bodies[bodyIndex]->RotateBy(rotation);
-//     }
-
-//     if (IsKeyDown(KEY_P))
-//     {
-//         Bodies[1]->RotateBy(rotation);
-//     }
-//     if (IsKeyDown(KEY_O))
-//     {
-//         Bodies[1]->RotateBy(-rotation);
-//     }
-
-//     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-//     {
-//         Vector2 mouseScreen = GetMousePosition();
-//         Vector2 mouseWorld = GetScreenToWorld2D(mouseScreen, camera);
-
-//         Vec2 clickPos(mouseWorld.x, mouseWorld.y);
-
-//         int index = FindClosestBody(clickPos);
-//         if (index != -1)
-//         {
-//             bodyIndex = index;
-//         }
-
-//     }
-
-//     if(IsMouseButtonDown(MOUSE_BUTTON_LEFT))
-//     {
-//         static Vec2 previousMouseWorld;
-//         static bool firstFrame = true;
-
-//         Vector2 mouseScreen = GetMousePosition();
-//         Vector2 mouseWorldRay = GetScreenToWorld2D(mouseScreen, camera);
-
-//         Vec2 mouseWorld(mouseWorldRay.x, mouseWorldRay.y);
-
-//         if (firstFrame)
-//         {
-//             previousMouseWorld = mouseWorld;
-//             firstFrame = false;
-//         }
-
-//         Vec2 mouseVelocity =
-//             (mouseWorld - previousMouseWorld) /
-//             constants::Physics_dt;
-
-//         Vec2 maxDrag = mouseVelocity.Normalize() * constants::MaxDragVelocity;
-//         mouseVelocity.Clamp(maxDrag);
-        
-//         previousMouseWorld = mouseWorld;
-
-//         if (bodyIndex != -1)
-//         {
-//             Vec2 delta = mouseWorld - Bodies[bodyIndex]->Position;
-//             Bodies[bodyIndex]->IsSleeping = false;
-//             forceMagnitude += 1000.0;
-//             Bodies[bodyIndex]->Position = mouseWorld;
-//         }
-            
-
-//         // MakeSpring(clickPos);
-
-//         // float width  = 20 + rand() % 80;
-//         // float height = 20 + rand() % 80;
-//         // float restitution = 0.2f + ((float)rand() / RAND_MAX) * (0.8f);
-//         // RigidBody * body = new RigidBody(RigidBody::CreateBox(clickPos , 1.0f ,restitution , false , width , height)) ;
-//         // Bodies.push_back(body);
-//     }
-
-//     if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-//     {
-//         Vector2 mouseScreen = GetMousePosition();
-//         Vector2 mouseWorldRay = GetScreenToWorld2D(mouseScreen, camera);
-
-//         Vec2 mouseWorld(mouseWorldRay.x, mouseWorldRay.y);
-
-//         Vec2 delta = mouseWorld - Bodies[bodyIndex]->Position;
-//         Bodies[bodyIndex]->AddForce(delta * forceMagnitude);
-//         bodyIndex = -1;
-//     }
-//     if(IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
-//     {
-//         Vector2 mouseScreen = GetMousePosition();
-//         Vector2 mouseWorld = GetScreenToWorld2D(mouseScreen, camera);
-//         Vec2 clickPos(mouseWorld.x, mouseWorld.y);
-
-        
-//         // MakeRope(40 , clickPos);
-
-//         float restitution = 0.2f + ((float)rand() / RAND_MAX) * (0.8f);
-//         float radius = 10 + rand() % 40;
-//         RigidBody * body = new RigidBody(RigidBody::CreateCircle(clickPos , 1.0f ,restitution , false , radius)); 
-//         Bodies.push_back(body);
-//     }
-// }
 
 
 void DrawBodies(vector<RigidBody*>& Bodies , Camera2D& camera) 
@@ -1385,6 +1099,80 @@ void CleanupWorld(vector<RigidBody*>& bodies) {
     bodies.clear();
 }
 
+void UpdateControls(Camera2D & camera , vector<RigidBody*> & Bodies)
+{
+    switch (currentControl)
+    {
+    case Control::Shooting:
+        UpdateShootingControls(camera , Bodies);
+        break;
+    case Control::Springs:
+        UpdateSpringControls(camera , Bodies);
+        break;
+    case Control::Pendulums:
+        UpdatedPendulumsControls(camera , Bodies);
+        break;
+    case Control::Drag:
+        UpdateDragControls(camera , Bodies);
+        break;
+    default:
+        break;
+    }
+}
+// UI functions
+
+void MainMenu()
+{
+    if (GuiButton(Rectangle{1100,100,150,50},"Shoot The Tower"))
+    {
+        MakeTower();
+        CurrentScreen = UIScreen::Tower;
+        currentControl = Control::Shooting;
+    }
+    if (GuiButton(Rectangle{1100,150,150,50},"Springs"))
+    {
+       
+        CurrentScreen = UIScreen::Springs;
+        currentControl = Control::Springs;
+    }
+    if (GuiButton(Rectangle{1100,200,150,50},"Pendulums"))
+    {
+        CurrentScreen = UIScreen::Pendulum;
+        currentControl = Control::Pendulums;
+    }
+    if (GuiButton(Rectangle{1100,250,150,50},"Drag And Smack"))
+    {
+        CurrentScreen = UIScreen::DragTest;
+        currentControl = Control::Drag;
+    }
+}
+
+void UpdateUI()
+{
+    switch (CurrentScreen)
+    {
+    case UIScreen::MainMenu:
+        MainMenu();
+        break;
+    case UIScreen::Tower:
+        
+        break;
+    case UIScreen::Springs:
+    
+        break;
+    case UIScreen::Pendulum:
+    
+        break;
+    case UIScreen::DragTest:
+    
+        break;
+    
+    default:
+        cout<<"unkown experiment"<<endl;
+        break;
+    }
+}
+
 int main()
 {
    
@@ -1397,7 +1185,6 @@ int main()
     srand(time(nullptr));
 
     Bodies = InitializeWorld();
-    MakeBodies(30);
 
     Bodies.reserve(1000);
     Joints.reserve(1000);
@@ -1411,11 +1198,8 @@ int main()
     camera.zoom = 1.0f;
 
     while(!WindowShouldClose())
-    {
-        // UpdateControls(camera , Bodies);
-        // UpdateShootingControls(camera , Bodies);
-        UpdateDragControls(camera , Bodies);
-        
+    { 
+        UpdateControls(camera , Bodies);
 
         BounceScreen(Bodies , camera);
 
@@ -1454,9 +1238,6 @@ int main()
             inf.TotalStep = 0;
         }
 
-
-        // RemoveOffScreen(Bodies , camera);
-
         BeginDrawing();
 
         ClearBackground(DARKGRAY);
@@ -1466,6 +1247,8 @@ int main()
         DrawBodies(Bodies , camera);
 
         EndMode2D();
+
+        UpdateUI();
 
         EndDrawing();
     }
