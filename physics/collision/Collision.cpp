@@ -175,41 +175,41 @@ Collision::CollisionResult Collision::IsPolygonCircleIntersect(const vector<Vec2
     return result;
 }
 
-Collision::CollisionResult Collision::Collide(RigidBody &bodyA, RigidBody &bodyB)
+Collision::CollisionResult Collision::Collide(RigidBody *bodyA, RigidBody *bodyB)
 {
-    if (bodyA.shapeType == ShapeType::Circle)
+    if (bodyA->shapeType == ShapeType::Circle)
     {
-        if (bodyB.shapeType == ShapeType::Circle)
+        if (bodyB->shapeType == ShapeType::Circle)
         {
             return Collision::IsIntersectCircle(
-                bodyA.Position,
-                bodyA.Radius,
-                bodyB.Position,
-                bodyB.Radius
+                bodyA->Position,
+                bodyA->Radius,
+                bodyB->Position,
+                bodyB->Radius
             );
         }
-        else if (bodyB.shapeType == ShapeType::Box)
+        else if (bodyB->shapeType == ShapeType::Box)
         {
-            Collision::CollisionResult res = Collision::IsPolygonCircleIntersect(bodyB.GetTransformedVertices(),bodyA.Position,bodyA.Radius);
+            Collision::CollisionResult res = Collision::IsPolygonCircleIntersect(bodyB->GetTransformedVertices(),bodyA->Position,bodyA->Radius);
             res.NormalCollisionDirection = res.NormalCollisionDirection * -1;
             return res;
         }
     }
-    else if (bodyA.shapeType == ShapeType::Box)
+    else if (bodyA->shapeType == ShapeType::Box)
     {
-        if (bodyB.shapeType == ShapeType::Box)
+        if (bodyB->shapeType == ShapeType::Box)
         {
             return Collision::IsPolygonSIntersect(
-                bodyA.GetTransformedVertices(),
-                bodyB.GetTransformedVertices()
+                bodyA->GetTransformedVertices(),
+                bodyB->GetTransformedVertices()
             );
         }
-        else if (bodyB.shapeType == ShapeType::Circle)
+        else if (bodyB->shapeType == ShapeType::Circle)
         {
             return Collision::IsPolygonCircleIntersect(
-                bodyA.GetTransformedVertices(),
-                bodyB.Position,
-                bodyB.Radius
+                bodyA->GetTransformedVertices(),
+                bodyB->Position,
+                bodyB->Radius
             );
         }
     }
@@ -221,8 +221,13 @@ Collision::CollisionResult Collision::Collide(RigidBody &bodyA, RigidBody &bodyB
 
 void Collision::FindContactPoints(Manifold &manifold)
 {
-    ShapeType typeA = manifold.BodyA.shapeType;
-    ShapeType typeB = manifold.BodyB.shapeType;
+    ShapeType typeA = manifold.BodyA->shapeType;
+    ShapeType typeB = manifold.BodyB->shapeType;
+
+    manifold.ContactCount = 0;
+
+    manifold.ContactPoints[0] = {0,0};
+    manifold.ContactPoints[1] = {0,0};
 
     if (typeA == ShapeType::Box)
     {
@@ -284,16 +289,16 @@ void Collision::FindCirclePolygonContact(Manifold &manifold)
     Vec2 circleCenter;
     Collision::PointSegmentResult result;
 
-    if (manifold.BodyA.shapeType == ShapeType::Box)
+    if (manifold.BodyA->shapeType == ShapeType::Box)
     {
-        vertices = manifold.BodyA.TransformedVertices;
-        circleCenter = manifold.BodyB.Position;
+        vertices = manifold.BodyA->TransformedVertices;
+        circleCenter = manifold.BodyB->Position;
     }
         
-    else if (manifold.BodyB.shapeType == ShapeType::Box)
+    else if (manifold.BodyB->shapeType == ShapeType::Box)
     {
-        vertices = manifold.BodyB.TransformedVertices;
-        circleCenter = manifold.BodyA.Position;
+        vertices = manifold.BodyB->TransformedVertices;
+        circleCenter = manifold.BodyA->Position;
     }
         
     for (int i = 0 ; i < vertices.size() ; i++)
@@ -318,13 +323,10 @@ void Collision::FindCirclePolygonContact(Manifold &manifold)
 
 void Collision::FindPolygonPolygonContact(Manifold &manifold)
 {
-    manifold.ContactPoints[0] = {0.0,0.0};
-    manifold.ContactPoints[1] = {0.0,0.0};
-
     float minDistance = numeric_limits<float>::max();
 
-    vector<Vec2> verticesA = manifold.BodyA.TransformedVertices;
-    vector<Vec2> verticesB = manifold.BodyB.TransformedVertices;
+    vector<Vec2> verticesA = manifold.BodyA->TransformedVertices;
+    vector<Vec2> verticesB = manifold.BodyB->TransformedVertices;
 
     // first nested loop
     for (int i = 0 ; i < verticesA.size() ; i++)
@@ -359,7 +361,7 @@ void Collision::FindPolygonPolygonContact(Manifold &manifold)
     for (int i = 0 ; i < verticesB.size() ; i++)
     {
         Vec2 p = verticesB[i];
-        for (int j = 0 ; j < verticesB.size() ; j++)
+        for (int j = 0 ; j < verticesA.size() ; j++)
         {
             Vec2 va = verticesA[j];
             Vec2 vb = verticesA[(j + 1) % verticesA.size()];
@@ -461,9 +463,9 @@ int Collision::FindClosestVertexToCircle(const Vec2 &circleCenter, const vector<
 
 void Collision::FindCircleCircleContact(Manifold &manifold)
 {
-    Vec2 AtoB = manifold.BodyB.Position - manifold.BodyA.Position;
+    Vec2 AtoB = manifold.BodyB->Position - manifold.BodyA->Position;
     Vec2 direction = AtoB.Normalize();
-    Vec2 contact1 = manifold.BodyA.Position + direction * manifold.BodyA.Radius;
+    Vec2 contact1 = manifold.BodyA->Position + direction * manifold.BodyA->Radius;
 
     manifold.ContactPoints[0] = contact1;
     manifold.ContactCount = 1;
