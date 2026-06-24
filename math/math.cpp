@@ -17,10 +17,11 @@ float math::Cross(const Vec2 &v1, const Vec2 &v2)
 
 bool math::NearlyEqual(float a, float b)
 {
-    return abs(a - b) < 0.0005f;
+    return abs(a - b) < 0.00005f;
 }
 
 bool math::NearlyEqual(const Vec2 &a, const Vec2 &b)
 {
     return NearlyEqual(a.X , b.X) && NearlyEqual(a.Y , b.Y);
 }
+

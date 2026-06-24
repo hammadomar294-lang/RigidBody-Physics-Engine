@@ -6,48 +6,62 @@ RigidBody::RigidBody(const Vec2 & position , float mass , float density , float 
                                : Position(position) , LinearVelocity(0,0) , Force(0.0f,0.0f)
 {
     
-    this->Mass = mass;
-    this->Density = density;
-    this->Restitution = restitution;
-    this->IsStatic = isStatic;
+    Mass = mass;
+    Density = density;
+    Restitution = restitution;
+    IsStatic = isStatic;
 
-    this->Area = area;
-    this->Radius = radius;
-    this->Width = width;
-    this->Height = height;
+    Area = area;
+    Radius = radius;
+    Width = width;
+    Height = height;
 
-    this->shapeType = shapetype;
-    this->BodyColor = color;
+    shapeType = shapetype;
+    BodyColor = color;
+    DisplayColor = color;
 
-    this->Rotation = 0;
-    this->RotationVelocity = 0; 
+    Rotation = 0;
+    RotationVelocity = 0; 
+
+    IsHeld = false;
+
     if(shapeType == ShapeType::Box)
     {
-        this->Vertices = MakeBoxVertices(width , height);
-        this->Triangles = TriangulateBox();
-        this->VerticesNeedsUpdate = true;
-        this->Inertia = (1.0f / 12.0f) * mass * (height * height + width * width);
+        Vertices = MakeBoxVertices(width , height);
+        Triangles = TriangulateBox();
+        VerticesNeedsUpdate = true;
+        Inertia = (1.0f / 12.0f) * mass * (height * height + width * width);
     }
     else if (shapeType == ShapeType::Circle)
     {
+        localStart = {0.0f, 0.0f};
+        localEnd = {radius, 0.0f};
         
-        this->Inertia = 0.5f * mass * radius * radius;
+        Inertia = 0.5f * mass * radius * radius;
     }
 
-    if (!this->IsStatic)
+    if (!IsStatic)
     {
-        this->InvMass = 1.0/mass;
-        this->InvInertia = 1.0/Inertia;
+        InvMass = 1.0/mass;
+        InvInertia = 1.0/Inertia;
     }
         
     else
     {
-        this->InvMass = 0.0;
-        this->InvInertia = 0.0;
+        InvMass = 0.0;
+        InvInertia = 0.0;
     }
     
     AABBNeedUpdate = true;
-    this->aabb = GetAABB();
+    aabb = GetAABB();
+
+    DynamicFriction = 0.1f + static_cast<float>(rand()) / RAND_MAX * 0.8f;
+
+    StaticFriction = DynamicFriction + static_cast<float>(rand()) / RAND_MAX * (1.0f - DynamicFriction);
+
+    IsSleeping = false;
+    SleepTimer = 0.0f;
+    
 }
 
 vector<Vec2> RigidBody::MakeBoxVertices(float width, float height)
@@ -116,7 +130,7 @@ RigidBody RigidBody::CreateCircle(const Vec2 & position , float density , float 
     (unsigned char)(rand() % 256), 
     (unsigned char)(rand() % 256), 
     255                            
-};
+    };
     
     density = clamp(density , constants::MinDensity , constants::MaxDensity);
     restitution = clamp(restitution , 0.0f , 1.0f);
@@ -197,21 +211,52 @@ void RigidBody::UpdatePhysics(int iterations)
         VerticesNeedsUpdate = true;
         AABBNeedUpdate = true;
     }
-    if (!IsStatic)
+    if (IsStatic)
+    {   RotationVelocity = 0.0f;
+        LinearVelocity = {0.0,0.0};
+        IsSleeping = false;
+        return;
+    }
+    if (IsSleeping)
     {
-        // Vec2 accelerationGravity = constants::gravity ;
-        // Vec2 accelerationForce = Force * InvMass;
-
-        // LinearVelocity += (accelerationGravity * constants::Physics_dt() / iterations) + (accelerationForce * constants::Physics_dt());
-        // 
+        
+        LinearVelocity = {0.0,0.0};
+        RotationVelocity = 0.0;
+        return;
+    }
+    else 
+    {
         Vec2 acceleration = constants::gravity +  Force * InvMass;
 
+        if (IsHeld)
+        {
+            acceleration = Force * InvMass;
+        }
         LinearVelocity += acceleration * constants::Physics_dt / iterations;
 
         Position += LinearVelocity * constants::Physics_dt / iterations;
 
         Rotation += RotationVelocity * constants::Physics_dt / iterations;
+
+        if (LinearVelocity.LengthSq() <= constants::SLEEP_LINEAR_THRESHOLD_SQ && abs(RotationVelocity) <= constants::SLEEP_ROTATION_THRESHOLD)
+        {
+            
+            SleepTimer += (constants::Physics_dt / iterations);
+            if (SleepTimer >= constants::TIME_TO_SLEEP)
+            {
+                LinearVelocity = {0.0,0.0};
+                RotationVelocity = 0.0;
+                IsSleeping = true;
+            }
+        }
+        else 
+        {
+            SleepTimer = 0.0;
+            IsSleeping = false;
+        }
     }
+   
+    
 }
 
 void RigidBody::AddForce(const Vec2 &amount)

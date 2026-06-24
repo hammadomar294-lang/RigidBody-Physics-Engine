@@ -61,12 +61,23 @@ float Vec2::Length() const
     return sqrt( X * X + Y * Y);
 }
 
+float Vec2::LengthSq() const
+{
+    return X * X + Y * Y;
+}
+
 Vec2 Vec2::Normalize() const
 {
     float length = Length();
     if (length == 0) return {0,0};
 
     return {X/length , Y/length};
+}
+
+void Vec2::Clamp( Vec2 &other)
+{
+    X = other.X;
+    Y = other.Y;
 }
 
 const Vec2 Vec2::Zero(0.0f,0.0f);
