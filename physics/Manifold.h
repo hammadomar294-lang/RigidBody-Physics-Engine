@@ -9,8 +9,8 @@ class Manifold
 {
 public:
 
-    RigidBody &BodyA;
-    RigidBody &BodyB;
+    RigidBody *BodyA;
+    RigidBody *BodyB;
 
     float Depth;
     Vec2 Normal;
@@ -18,7 +18,7 @@ public:
     int ContactCount;
     Vec2 ContactPoints[2];
 
-    Manifold(RigidBody & bodyA , RigidBody & bodyB , 
+    Manifold(RigidBody * bodyA , RigidBody * bodyB , 
         float depth ,const Vec2 & normal ,const Vec2 & contact1 
         ,const Vec2 & contact2 , int contactCount);
     

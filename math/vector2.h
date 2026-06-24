@@ -24,8 +24,11 @@ public:
     bool operator!=(const Vec2 & other) const;
 
     float Length() const;
+    float LengthSq() const;
 
     Vec2 Normalize() const;
+
+    void Clamp( Vec2 & other);
     
     static const Vec2 Zero;
 

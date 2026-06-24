@@ -21,6 +21,15 @@ public:
     static constexpr float pi = 3.14159265359f;
     inline static Vec2 gravity = {0.0f ,500.0f};
     static constexpr float Physics_dt = 1.0f / 60.0f; 
+
+    static constexpr float SLEEP_LINEAR_THRESHOLD_SQ = 2.0f * 2.0f;  
+    static constexpr float SLEEP_ROTATION_THRESHOLD = 2.0f; 
+    static constexpr float TIME_TO_SLEEP = 0.5f;    
+    
+    static constexpr float MaxDragVelocity = 20.0f;  
+
+    static constexpr float MaxShootingForce = 1000.0f;          
+    static constexpr float MinShootingForce = 1.0f;          
 };
 
 #endif

@@ -35,7 +35,7 @@ public:
     static CollisionResult IsPolygonSIntersect(const vector<Vec2> & verticesA , const vector<Vec2> & verticesB);
     static CollisionResult IsPolygonCircleIntersect(const vector<Vec2> & vertices , const Vec2 & circleCenter , float radius);
 
-    static CollisionResult Collide(RigidBody& bodyA, RigidBody& bodyB);
+    static CollisionResult Collide(RigidBody* bodyA, RigidBody* bodyB);
 
     static void FindContactPoints(Manifold& manifold);
 

@@ -38,16 +38,25 @@ public:
 
     bool IsStatic; // if it can move or not
 
+    bool IsSleeping;
+    float SleepTimer;
+
+    bool IsHeld;
+
     float Radius;
     float Width;
     float Height;
 
     float Inertia;
     float InvInertia;
+
+    float StaticFriction;
+    float DynamicFriction;
     
     ShapeType shapeType;
 
     Color BodyColor;
+    Color DisplayColor;
     
     RigidBody(const Vec2 & position , float mass , float density , float restitution , float area ,
                               bool isStatic , ShapeType shapetype , Color color , float radius =1, float width =1, float height =1);
@@ -56,6 +65,9 @@ public:
 
     static RigidBody CreateBox(const Vec2 & position , float density , float restitution , bool isStatic , float width, float height);
 
+     Vec2 localStart ;
+     Vec2 localEnd ;
+
     void MoveBy(Vec2 amount);
     void MoveTo(Vec2 position);
     void RotateBy(float amount);
@@ -63,8 +75,6 @@ public:
     void UpdatePhysics(int iterations);
 
     void AddForce(const Vec2 &amount);
-    void ApplyImpulse(const Vec2 &impulse);
-
    
     vector<Vec2> Vertices;
     vector<Vec2> TransformedVertices;
