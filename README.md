@@ -170,7 +170,7 @@ Potential projects:
 
 ## Screenshots
 
-*(Add screenshots or GIFs here)*
+https://github.com/user-attachments/assets/cf1b98f9-8d24-4686-a7bf-73cbe8eb9e40
 
 ---
 
