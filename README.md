@@ -4,6 +4,14 @@ A personal long-term project focused on building a modular 2D physics engine ent
 
 The purpose of this project is to understand the mathematics, simulation techniques, engine architecture, and software engineering principles behind modern physics engines rather than relying on existing physics libraries.
 
+---
+
+## Screenshots
+
+https://github.com/user-attachments/assets/cf1b98f9-8d24-4686-a7bf-73cbe8eb9e40
+
+---
+
 > **This project was built completely from scratch.**
 > No external physics engine (such as Box2D or Chipmunk2D) is used.
 
@@ -165,14 +173,6 @@ Potential projects:
 - Angry Birds Clone
 - Physics Puzzle Game
 - Bridge Builder
-
----
-
-## Screenshots
-
-https://github.com/user-attachments/assets/cf1b98f9-8d24-4686-a7bf-73cbe8eb9e40
-
----
 
 ## Repository Status
 
