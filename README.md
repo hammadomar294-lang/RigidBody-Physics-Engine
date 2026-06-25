@@ -61,9 +61,8 @@ https://github.com/user-attachments/assets/cf1b98f9-8d24-4686-a7bf-73cbe8eb9e40
 | Input | Action |
 |-------|--------|
 | Left Mouse | Drag bodies |
-| Right Mouse | Spawn random body |
-| Shoot Mode | Launch projectile |
-| Mouse | Aim projectile |
+| Right Mouse | Spawn selected experiment body |
+
 
 ---
 
